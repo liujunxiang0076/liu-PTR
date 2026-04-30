@@ -1,50 +1,79 @@
-# Welcome to your Expo app 👋
+# liu-PTR — 差旅费用记录
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+基于 [Expo](https://expo.dev) 的 React Native 差旅费用记录应用，支持日历视图、结构化费用管理、差旅行程管理和统计报表。
 
-## Get started
+## 功能
 
-1. Install dependencies
+- **日历视图**: 滑动切换月份，中国节假日标注，日期格显示当日费用金额
+- **费用记录**: 金额、分类（交通/住宿/餐饮/通讯/办公/其他）、多币种（CNY/USD/EUR/JPY/GBP）、备注
+- **差旅管理**: 创建行程（名称/目的地/日期范围/预算），费用自动关联行程，预算进度追踪
+- **统计报表**: 月度汇总、分类占比图、每日支出柱状图
+- **CSV 导出**: 一键复制到剪贴板，可粘贴到 Excel 报销
+- **数据持久化**: AsyncStorage 本地存储，关闭应用不丢失
+- **深色/浅色主题**: 自动跟随系统主题
 
-   ```bash
-   npm install
-   ```
+## 技术栈
 
-2. Start the app
+- **框架**: Expo SDK 54 + React Native 0.81 + React 19
+- **路由**: Expo Router（文件系统路由）
+- **语言**: TypeScript 5.9
+- **存储**: AsyncStorage
+- **动画**: React Native Reanimated + React Native Gesture Handler
+- **UI**: React Navigation + 深色/浅色主题
 
-   ```bash
-   npx expo start
-   ```
+## 项目结构
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+app/
+  _layout.tsx              # 根布局（主题、导航栈）
+  trip-detail.tsx          # 行程详情页
+  modal.tsx                # 模态页
+  (tabs)/
+    _layout.tsx            # 标签栏布局（日历/差旅/统计）
+    index.tsx              # 首页（日历视图）
+    trips.tsx              # 差旅管理
+    stats.tsx              # 统计报表
+components/
+  calendar.tsx             # 可滑动月份日历
+  day-detail-panel.tsx     # 费用详情底部弹窗
+  trip-form-modal.tsx      # 行程创建/编辑表单
+  app-context.tsx          # 统一 Context（费用+行程+汇率）
+types/
+  expense.ts               # 类型定义与常量
+constants/
+  currency.ts              # 汇率、格式化、分类颜色
+  holidays.ts              # 中国节假日数据
+  theme.ts                 # 主题配置
+hooks/
+  use-expenses.ts          # 费用 CRUD（AsyncStorage 持久化）
+  use-trips.ts             # 行程 CRUD（AsyncStorage 持久化）
+  use-exchange-rates.ts    # 汇率管理
+utils/
+  csv-export.ts            # CSV 生成工具
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## 快速开始
 
-## Learn more
+```bash
+# 安装依赖
+npm install
 
-To learn more about developing your project with Expo, look at the following resources:
+# 启动开发服务器
+npx expo start
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+启动后可选择在以下环境中运行：
+- Expo Go（扫码体验）
+- Android 模拟器
+- iOS 模拟器
+- Web 浏览器
 
-## Join the community
+## 可用脚本
 
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+| 命令 | 说明 |
+|------|------|
+| `npm start` | 启动开发服务器 |
+| `npm run android` | 在 Android 模拟器中运行 |
+| `npm run ios` | 在 iOS 模拟器中运行 |
+| `npm run web` | 在浏览器中运行 |
+| `npm run lint` | 运行 ESLint 检查 |
