@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
 
+import { AppProvider } from '@/components/app-context';
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
@@ -10,26 +11,35 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
 
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
-        }}
-      />
-    </Tabs>
+    <AppProvider>
+      <Tabs
+        screenOptions={{
+          tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+          headerShown: false,
+          tabBarButton: HapticTab,
+        }}>
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: '日历',
+            tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar" color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="trips"
+          options={{
+            title: '差旅',
+            tabBarIcon: ({ color }) => <IconSymbol size={28} name="briefcase.fill" color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="stats"
+          options={{
+            title: '统计',
+            tabBarIcon: ({ color }) => <IconSymbol size={28} name="chart.bar.fill" color={color} />,
+          }}
+        />
+      </Tabs>
+    </AppProvider>
   );
 }
