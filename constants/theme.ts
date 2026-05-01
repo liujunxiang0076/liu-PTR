@@ -27,6 +27,18 @@ export const Colors = {
   },
 };
 
+/** 语义色 */
+export const SemanticColors = {
+  danger: '#E85D5D',
+  dangerDark: '#FF7B7B',
+  warning: '#F5A623',
+  success: '#7ED321',
+  muted: { light: '#9BA1A6', dark: '#687076' },
+  border: { light: '#E5E5E5', dark: '#2A2A2A' },
+  inputBg: { light: '#F5F5F5', dark: '#1E1E1E' },
+  panelBg: { light: '#FFFFFF', dark: '#151718' },
+};
+
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */

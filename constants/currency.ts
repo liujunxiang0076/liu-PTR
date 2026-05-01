@@ -43,9 +43,11 @@ export function compactAmount(cnyAmount: number): string {
   return Math.round(cnyAmount).toString();
 }
 
+let uidCounter = 0;
 /** 生成唯一 id */
 export function uid() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  uidCounter++;
+  return Date.now().toString(36) + uidCounter.toString(36) + Math.random().toString(36).slice(2, 10);
 }
 
 /** 计算一组费用的 CNY 总额 */
