@@ -1,12 +1,12 @@
-import { createContext, useContext } from 'react';
+import { createContext, useCallback, useContext, useMemo } from 'react';
 
 import { type Currency, type ExpenseItem, type Trip } from '@/types/expense';
 import { useExpenses } from '@/hooks/use-expenses';
 import { useTrips } from '@/hooks/use-trips';
 import { useExchangeRates } from '@/hooks/use-exchange-rates';
 
-type AppContextType = {
-  // 费用操作
+// 费用 Context
+type ExpenseContextType = {
   getByDate: (dateKey: string) => ExpenseItem[];
   addExpense: (dateKey: string, item: Omit<ExpenseItem, 'id' | 'createdAt' | 'dateKey'>) => void;
   updateExpense: (dateKey: string, id: string, updates: Partial<ExpenseItem>) => void;
@@ -17,8 +17,11 @@ type AppContextType = {
   getByDateRange: (startDate: string, endDate: string) => ExpenseItem[];
   getMonthlyTotal: (year: number, month: number) => { total: number; count: number };
   getMonthExpenses: (year: number, month: number) => ExpenseItem[];
+  loaded: boolean;
+};
 
-  // 行程操作
+// 行程 Context
+type TripContextType = {
   trips: Trip[];
   addTrip: (trip: Omit<Trip, 'id' | 'createdAt'>) => string;
   updateTrip: (id: string, updates: Partial<Trip>) => void;
@@ -26,14 +29,21 @@ type AppContextType = {
   getTripById: (id: string) => Trip | null;
   getActiveTrip: (dateKey: string) => Trip | null;
   getTripsInMonth: (year: number, month: number) => Trip[];
-
-  // 币种
-  convert: (amount: number, from: Currency) => number;
-  rates: Record<Currency, number>;
-
   loaded: boolean;
 };
 
+// 汇率 Context
+type ExchangeRateContextType = {
+  convert: (amount: number, from: Currency) => number;
+  rates: Record<Currency, number>;
+};
+
+// 组合 Context（保持向后兼容）
+type AppContextType = ExpenseContextType & TripContextType & ExchangeRateContextType;
+
+const ExpenseContext = createContext<ExpenseContextType | null>(null);
+const TripContext = createContext<TripContextType | null>(null);
+const ExchangeRateContext = createContext<ExchangeRateContextType | null>(null);
 const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -41,34 +51,78 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const trips = useTrips();
   const exchangeRates = useExchangeRates();
 
-  const value: AppContextType = {
+  const rates = exchangeRates.rates.rates;
+
+  const removeTrip = useCallback((id: string) => {
+    trips.remove(id);
+    expenses.removeByTrip(id);
+  }, [trips.remove, expenses.removeByTrip]);
+
+  const tripValue: TripContextType = useMemo(() => ({
+    trips: trips.getAll(),
+    addTrip: trips.add,
+    updateTrip: trips.update,
+    removeTrip,
+    getTripById: trips.getById,
+    getActiveTrip: trips.getActiveTrip,
+    getTripsInMonth: trips.getTripsInMonth,
+    loaded: trips.loaded,
+  }), [trips, removeTrip]);
+
+  const expenseValue: ExpenseContextType = useMemo(() => ({
     getByDate: expenses.getByDate,
     addExpense: expenses.add,
     updateExpense: expenses.update,
     removeExpense: expenses.remove,
     hasRecords: expenses.hasRecords,
-    getDailyTotal: (dateKey: string) => expenses.getDailyTotal(dateKey, exchangeRates.rates.rates),
+    getDailyTotal: (dateKey: string) => expenses.getDailyTotal(dateKey, rates),
     getByTrip: expenses.getByTrip,
     getByDateRange: expenses.getByDateRange,
     getMonthlyTotal: (year: number, month: number) =>
-      expenses.getMonthlyTotal(year, month, exchangeRates.rates.rates),
+      expenses.getMonthlyTotal(year, month, rates),
     getMonthExpenses: expenses.getMonthExpenses,
+    loaded: expenses.loaded,
+  }), [expenses, rates]);
 
-    trips: trips.getAll(),
-    addTrip: trips.add,
-    updateTrip: trips.update,
-    removeTrip: trips.remove,
-    getTripById: trips.getById,
-    getActiveTrip: trips.getActiveTrip,
-    getTripsInMonth: trips.getTripsInMonth,
-
+  const exchangeRateValue: ExchangeRateContextType = useMemo(() => ({
     convert: exchangeRates.convert,
-    rates: exchangeRates.rates.rates,
+    rates,
+  }), [exchangeRates.convert, rates]);
 
+  const value: AppContextType = useMemo(() => ({
+    ...expenseValue,
+    ...tripValue,
+    ...exchangeRateValue,
     loaded: expenses.loaded && trips.loaded,
-  };
+  }), [expenseValue, tripValue, exchangeRateValue, expenses.loaded, trips.loaded]);
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return (
+    <ExpenseContext.Provider value={expenseValue}>
+      <TripContext.Provider value={tripValue}>
+        <ExchangeRateContext.Provider value={exchangeRateValue}>
+          <AppContext.Provider value={value}>{children}</AppContext.Provider>
+        </ExchangeRateContext.Provider>
+      </TripContext.Provider>
+    </ExpenseContext.Provider>
+  );
+}
+
+export function useExpenseContext() {
+  const ctx = useContext(ExpenseContext);
+  if (!ctx) throw new Error('useExpenseContext must be used within AppProvider');
+  return ctx;
+}
+
+export function useTripContext() {
+  const ctx = useContext(TripContext);
+  if (!ctx) throw new Error('useTripContext must be used within AppProvider');
+  return ctx;
+}
+
+export function useExchangeRateContext() {
+  const ctx = useContext(ExchangeRateContext);
+  if (!ctx) throw new Error('useExchangeRateContext must be used within AppProvider');
+  return ctx;
 }
 
 export function useAppContext() {
