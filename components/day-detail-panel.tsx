@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -20,6 +21,7 @@ import { useAppContext } from '@/components/app-context';
 import { getHoliday } from '@/constants/holidays';
 import { formatAmount, getCategoryColor } from '@/constants/currency';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { SemanticColors } from '@/constants/theme';
 import { ThemedText } from './themed-text';
 import {
   type Currency,
@@ -105,8 +107,8 @@ export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: 
   const borderColor = useThemeColor({ light: '#E5E5E5', dark: '#2A2A2A' }, 'icon');
   const inputBg = useThemeColor({ light: '#F5F5F5', dark: '#1E1E1E' }, 'background');
   const panelBg = useThemeColor({ light: '#FFFFFF', dark: '#151718' }, 'background');
-  const dangerColor = useThemeColor({ light: '#E85D5D', dark: '#FF7B7B' }, 'tint');
-  const holidayColor = useThemeColor({ light: '#E85D5D', dark: '#FF7B7B' }, 'tint');
+  const dangerColor = useThemeColor({ light: SemanticColors.danger, dark: SemanticColors.dangerDark }, 'tint');
+  const holidayColor = useThemeColor({ light: SemanticColors.danger, dark: SemanticColors.dangerDark }, 'tint');
 
   const canAdd = parseFloat(amount) > 0;
 
@@ -189,7 +191,10 @@ export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: 
                 {formatAmount(item.amount, item.currency)}
               </ThemedText>
               <TouchableOpacity
-                onPress={() => removeExpense(dateKey, item.id)}
+                onPress={() => Alert.alert('确认删除', '确定要删除这条费用记录吗？', [
+                  { text: '取消', style: 'cancel' },
+                  { text: '删除', style: 'destructive', onPress: () => removeExpense(dateKey, item.id) },
+                ])}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <ThemedText style={[styles.deleteBtn, { color: dangerColor }]}>×</ThemedText>
               </TouchableOpacity>

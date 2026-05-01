@@ -14,6 +14,7 @@ import {
 import { ThemedText } from '@/components/themed-text';
 import { useAppContext } from '@/components/app-context';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { SemanticColors } from '@/constants/theme';
 
 type Props = {
   visible: boolean;
@@ -212,7 +213,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   errorText: {
-    color: '#E85D5D',
+    color: SemanticColors.danger,
     fontSize: 13,
     textAlign: 'center',
   },

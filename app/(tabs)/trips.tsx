@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
@@ -8,6 +8,7 @@ import { TripFormModal } from '@/components/trip-form-modal';
 import { useAppContext } from '@/components/app-context';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { sumExpensesInCNY } from '@/constants/currency';
+import { SemanticColors } from '@/constants/theme';
 
 export default function TripsScreen() {
   const { trips, getByTrip, removeTrip, rates } = useAppContext();
@@ -68,7 +69,7 @@ export default function TripsScreen() {
           const spent = sumExpensesInCNY(expenses, rates);
           const rawPct = item.budget > 0 ? (spent / item.budget) * 100 : 0;
           const pct = Math.min(rawPct, 100);
-          const barColor = rawPct > 100 ? '#E85D5D' : rawPct > 70 ? '#F5A623' : '#7ED321';
+          const barColor = rawPct > 100 ? SemanticColors.danger : rawPct > 70 ? SemanticColors.warning : SemanticColors.success;
 
           return (
             <TouchableOpacity
@@ -86,7 +87,10 @@ export default function TripsScreen() {
                   <TouchableOpacity onPress={() => handleEdit(item.id)} hitSlop={8}>
                     <ThemedText style={[styles.actionText, { color: tint }]}>编辑</ThemedText>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => removeTrip(item.id)} hitSlop={8}>
+                  <TouchableOpacity onPress={() => Alert.alert('确认删除', `确定要删除行程「${item.name}」吗？`, [
+                    { text: '取消', style: 'cancel' },
+                    { text: '删除', style: 'destructive', onPress: () => removeTrip(item.id) },
+                  ])} hitSlop={8}>
                     <ThemedText style={[styles.actionText, { color: dangerColor }]}>删除</ThemedText>
                   </TouchableOpacity>
                 </View>

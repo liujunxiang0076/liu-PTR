@@ -6,6 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useAppContext } from '@/components/app-context';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { formatAmount, getCategoryColor, sumExpensesInCNY } from '@/constants/currency';
+import { SemanticColors } from '@/constants/theme';
 import { CATEGORIES, type ExpenseItem } from '@/types/expense';
 
 export default function TripDetailScreen() {
@@ -33,7 +34,7 @@ export default function TripDetailScreen() {
   const totalCNY = sumExpensesInCNY(expenses, rates);
   const rawPct = trip.budget > 0 ? (totalCNY / trip.budget) * 100 : 0;
   const pct = Math.min(rawPct, 100);
-  const barColor = rawPct > 100 ? '#E85D5D' : rawPct > 70 ? '#F5A623' : '#7ED321';
+  const barColor = rawPct > 100 ? SemanticColors.danger : rawPct > 70 ? SemanticColors.warning : SemanticColors.success;
 
   // 按分类统计
   const categoryTotals: Record<string, number> = {};
