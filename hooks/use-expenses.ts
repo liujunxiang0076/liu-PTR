@@ -1,21 +1,25 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { type Currency, type ExpenseItem, type ExpensesMap } from '@/types/expense';
 import { convertToCNY, uid } from '@/constants/currency';
 
 const STORAGE_KEY = '@expenses:v1';
+const SAVE_DELAY = 300;
 
 export function useExpenses() {
   const [expenses, setExpenses] = useState<ExpensesMap>({});
   const [loaded, setLoaded] = useState(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
       if (raw) {
         try {
           setExpenses(JSON.parse(raw));
-        } catch {}
+        } catch (e) {
+          console.warn('[useExpenses] JSON 解析失败，数据可能已损坏:', e);
+        }
       }
       setLoaded(true);
     });
@@ -23,8 +27,12 @@ export function useExpenses() {
 
   useEffect(() => {
     if (loaded) {
-      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => {
+        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
+      }, SAVE_DELAY);
     }
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
   }, [expenses, loaded]);
 
   const getByDate = useCallback((dateKey: string) => expenses[dateKey] ?? [], [expenses]);
@@ -139,11 +147,23 @@ export function useExpenses() {
     [expenses]
   );
 
+  const removeByTrip = useCallback((tripId: string) => {
+    setExpenses((prev) => {
+      const next: ExpensesMap = {};
+      for (const [dateKey, list] of Object.entries(prev)) {
+        const filtered = list.filter((e) => e.tripId !== tripId);
+        if (filtered.length > 0) next[dateKey] = filtered;
+      }
+      return next;
+    });
+  }, []);
+
   return {
     getByDate,
     add,
     update,
     remove,
+    removeByTrip,
     hasRecords,
     getDailyTotal,
     getByTrip,

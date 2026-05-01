@@ -1,21 +1,25 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { type Trip } from '@/types/expense';
 import { uid } from '@/constants/currency';
 
 const STORAGE_KEY = '@trips:v1';
+const SAVE_DELAY = 300;
 
 export function useTrips() {
   const [trips, setTrips] = useState<Record<string, Trip>>({});
   const [loaded, setLoaded] = useState(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
       if (raw) {
         try {
           setTrips(JSON.parse(raw));
-        } catch {}
+        } catch (e) {
+          console.warn('[useTrips] JSON 解析失败，数据可能已损坏:', e);
+        }
       }
       setLoaded(true);
     });
@@ -23,8 +27,12 @@ export function useTrips() {
 
   useEffect(() => {
     if (loaded) {
-      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(trips));
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => {
+        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(trips));
+      }, SAVE_DELAY);
     }
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
   }, [trips, loaded]);
 
   const add = useCallback((trip: Omit<Trip, 'id' | 'createdAt'>) => {
