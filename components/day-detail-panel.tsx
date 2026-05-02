@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -51,6 +52,7 @@ export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: 
   const [currency, setCurrency] = useState<Currency>('CNY');
   const [category, setCategory] = useState<ExpenseCategory>('餐饮');
   const [notes, setNotes] = useState('');
+  const [shouldRender, setShouldRender] = useState(false);
   const amountRef = useRef<TextInput>(null);
 
   const records = getByDate(dateKey);
@@ -65,6 +67,7 @@ export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: 
 
   useEffect(() => {
     if (visible) {
+      setShouldRender(true);
       overlayOpacity.value = withTiming(1, { duration: PANEL_DURATION });
       panelY.value = withTiming(0, { duration: PANEL_DURATION });
       // 重置表单
@@ -75,6 +78,8 @@ export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: 
     } else {
       overlayOpacity.value = withTiming(0, { duration: PANEL_DURATION });
       panelY.value = withTiming(1, { duration: PANEL_DURATION });
+      const timer = setTimeout(() => setShouldRender(false), PANEL_DURATION);
+      return () => clearTimeout(timer);
     }
   }, [visible, overlayOpacity, panelY]);
 
@@ -98,21 +103,21 @@ export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: 
     });
     setAmount('');
     setNotes('');
-    amountRef.current?.focus();
+    Keyboard.dismiss();
   }, [amount, currency, category, notes, addExpense, dateKey, activeTrip]);
 
   const tint = useThemeColor({}, 'tint');
   const textColor = useThemeColor({}, 'text');
-  const mutedColor = useThemeColor({ light: '#9BA1A6', dark: '#687076' }, 'icon');
-  const borderColor = useThemeColor({ light: '#E5E5E5', dark: '#2A2A2A' }, 'icon');
-  const inputBg = useThemeColor({ light: '#F5F5F5', dark: '#1E1E1E' }, 'background');
-  const panelBg = useThemeColor({ light: '#FFFFFF', dark: '#151718' }, 'background');
+  const mutedColor = useThemeColor({ light: SemanticColors.muted.light, dark: SemanticColors.muted.dark }, 'icon');
+  const borderColor = useThemeColor({ light: SemanticColors.border.light, dark: SemanticColors.border.dark }, 'icon');
+  const inputBg = useThemeColor({ light: SemanticColors.inputBg.light, dark: SemanticColors.inputBg.dark }, 'background');
+  const panelBg = useThemeColor({ light: SemanticColors.panelBg.light, dark: SemanticColors.panelBg.dark }, 'background');
   const dangerColor = useThemeColor({ light: SemanticColors.danger, dark: SemanticColors.dangerDark }, 'tint');
   const holidayColor = useThemeColor({ light: SemanticColors.danger, dark: SemanticColors.dangerDark }, 'tint');
 
   const canAdd = parseFloat(amount) > 0;
 
-  if (!visible) return null;
+  if (!shouldRender) return null;
 
   return (
     <KeyboardAvoidingView

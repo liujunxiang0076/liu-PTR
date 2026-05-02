@@ -8,8 +8,9 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { getHoliday, isWeekend } from '@/constants/holidays';
+import { getHoliday, getRestDayBadge, isWeekend, type RestDayBadge } from '@/constants/holidays';
 import { compactAmount } from '@/constants/currency';
+import { SemanticColors } from '@/constants/theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { ThemedText } from './themed-text';
 
@@ -46,6 +47,7 @@ type DayCell = {
   isToday: boolean;
   isWeekend: boolean;
   holiday: string | null;
+  restDayBadge: RestDayBadge;
   dateKey: string;
 };
 
@@ -76,6 +78,7 @@ function buildGrid(year: number, month: number, today: Date): DayCell[][] {
           currentMonth: false, isToday: false,
           isWeekend: isWeekend(py, pm, d),
           holiday: getHoliday(py, pm, d),
+          restDayBadge: getRestDayBadge(py, pm, d),
           dateKey: makeDateKey(py, pm, d),
         });
       } else if (dayCounter <= daysInMonth) {
@@ -85,6 +88,7 @@ function buildGrid(year: number, month: number, today: Date): DayCell[][] {
           isToday: isSameDay(new Date(year, month, dayCounter), today),
           isWeekend: isWeekend(year, month, dayCounter),
           holiday: getHoliday(year, month, dayCounter),
+          restDayBadge: getRestDayBadge(year, month, dayCounter),
           dateKey: makeDateKey(year, month, dayCounter),
         });
         dayCounter++;
@@ -96,6 +100,7 @@ function buildGrid(year: number, month: number, today: Date): DayCell[][] {
           currentMonth: false, isToday: false,
           isWeekend: isWeekend(ny, nm, nextDayCounter),
           holiday: getHoliday(ny, nm, nextDayCounter),
+          restDayBadge: getRestDayBadge(ny, nm, nextDayCounter),
           dateKey: makeDateKey(ny, nm, nextDayCounter),
         });
         nextDayCounter++;
@@ -142,19 +147,32 @@ function DayCellView({
     ? mutedColor
     : cell.isToday ? '#fff' : cell.isWeekend ? weekendColor : undefined;
 
+  const hasExpense = dailyTotal > 0;
+  const showAmount = hasExpense && !cell.holiday;
+
   return (
     <TouchableOpacity style={styles.weekCell} activeOpacity={0.6} onPress={onPress}>
-      {cell.isToday ? (
-        <View style={[styles.todayCircle, { backgroundColor: tint }]}>
-          <ThemedText style={[styles.dayText, { color: '#fff', fontWeight: '700' }]}>
+      <View style={styles.dayWrapper}>
+        {cell.isToday ? (
+          <View style={[styles.todayCircle, { backgroundColor: tint }]}>
+            <ThemedText style={[styles.dayText, { color: '#fff', fontWeight: '700' }]}>
+              {cell.day}
+            </ThemedText>
+          </View>
+        ) : (
+          <ThemedText style={[styles.dayText, textColor !== undefined && { color: textColor }]}>
             {cell.day}
           </ThemedText>
-        </View>
-      ) : (
-        <ThemedText style={[styles.dayText, textColor !== undefined && { color: textColor }]}>
-          {cell.day}
-        </ThemedText>
-      )}
+        )}
+        {cell.restDayBadge && cell.currentMonth && (
+          <View style={[
+            styles.restBadge,
+            { backgroundColor: cell.restDayBadge === '休' ? SemanticColors.success : SemanticColors.warning },
+          ]}>
+            <ThemedText style={styles.restBadgeText}>{cell.restDayBadge}</ThemedText>
+          </View>
+        )}
+      </View>
       {cell.holiday && (
         <ThemedText
           style={[styles.holidayText, { color: cell.currentMonth ? holidayColor : mutedColor }]}
@@ -162,7 +180,15 @@ function DayCellView({
           {cell.holiday}
         </ThemedText>
       )}
-      {dailyTotal > 0 && !cell.holiday && (
+      {showAmount && (
+        <ThemedText
+          style={[styles.amountText, { color: cell.currentMonth ? tint : mutedColor }]}
+          numberOfLines={1}>
+          {compactAmount(dailyTotal)}
+        </ThemedText>
+      )}
+      {/* 节假日+费用同时存在时：显示紧凑金额 */}
+      {cell.holiday && hasExpense && (
         <ThemedText
           style={[styles.amountText, { color: cell.currentMonth ? tint : mutedColor }]}
           numberOfLines={1}>
@@ -187,7 +213,7 @@ function MonthGrid({
   colors: { tint: string; muted: string; holiday: string; weekend: string };
 }) {
   return (
-    <View>
+    <View style={{ width: '100%' }}>
       {grid.map((week, ri) => (
         <View key={ri} style={styles.weekRow}>
           {week.map((cell, ci) => (
@@ -213,47 +239,31 @@ function MonthGrid({
 export function Calendar({ onDayPress, hasRecords, getDailyTotal }: Props) {
   const today = useMemo(() => new Date(), []);
 
-  // 所有月份数据存在 ref 里，同步更新，无异步间隙
-  const dataRef = useRef({
-    year: today.getFullYear(),
-    month: today.getMonth(),
-    label: computeLabel(today.getFullYear(), today.getMonth()),
-    currGrid: [] as DayCell[][],
-    prevGrid: [] as DayCell[][],
-    nextGrid: [] as DayCell[][],
+  // 月份状态 + 网格数据合为一个 state，保证原子更新
+  const [gridData, setGridData] = useState(() => {
+    const y = today.getFullYear();
+    const m = today.getMonth();
+    const prev = computeAdjacent(y, m, 1);
+    const next = computeAdjacent(y, m, -1);
+    return {
+      year: y,
+      month: m,
+      label: computeLabel(y, m),
+      currGrid: filterVisible(buildGrid(y, m, today)),
+      prevGrid: filterVisible(buildGrid(prev.y, prev.m, today)),
+      nextGrid: filterVisible(buildGrid(next.y, next.m, today)),
+    };
   });
 
-  // 初始化三个网格
-  if (dataRef.current.currGrid.length === 0) {
-    const d = dataRef.current;
-    d.currGrid = filterVisible(buildGrid(d.year, d.month, today));
-    const prev = computeAdjacent(d.year, d.month, 1);
-    d.prevGrid = filterVisible(buildGrid(prev.y, prev.m, today));
-    const next = computeAdjacent(d.year, d.month, -1);
-    d.nextGrid = filterVisible(buildGrid(next.y, next.m, today));
-  }
+  // 用于手势滑动过程中缓存预计算的目标数据
+  const pendingRef = useRef<typeof gridData | null>(null);
 
-  // 预计算的目标数据（滑动过程中提前计算，动画完成时直接切换，消除抖动）
-  const pendingRef = useRef<{
-    dir: number;
-    year: number;
-    month: number;
-    label: string;
-    currGrid: DayCell[][];
-    prevGrid: DayCell[][];
-    nextGrid: DayCell[][];
-  } | null>(null);
-
-  // 不再使用 forceRender——数据更新通过 setMonthLabel 自然触发 React 渲染
-
-  // 月份标签（仅在动画完成后更新，滑动过程中不变，避免 React 渲染干扰动画）
-  const [monthLabel, setMonthLabel] = useState(dataRef.current.label);
   const [width, setWidth] = useState(0);
 
   const tint = useThemeColor({}, 'tint');
-  const mutedColor = useThemeColor({ light: '#9BA1A6', dark: '#687076' }, 'icon');
-  const holidayColor = useThemeColor({ light: '#E85D5D', dark: '#FF7B7B' }, 'tint');
-  const weekendColor = useThemeColor({ light: '#E85D5D', dark: '#FF7B7B' }, 'tint');
+  const mutedColor = useThemeColor({ light: SemanticColors.muted.light, dark: SemanticColors.muted.dark }, 'icon');
+  const holidayColor = useThemeColor({ light: SemanticColors.danger, dark: SemanticColors.dangerDark }, 'tint');
+  const weekendColor = useThemeColor({ light: SemanticColors.danger, dark: SemanticColors.dangerDark }, 'tint');
 
   const colors = { tint, muted: mutedColor, holiday: holidayColor, weekend: weekendColor };
 
@@ -267,15 +277,14 @@ export function Calendar({ onDayPress, hasRecords, getDailyTotal }: Props) {
     }
   }, [width, translateX]);
 
-  // 预计算目标月份数据（在滑动判断方向时调用，而非动画完成时）
+  // 预计算目标月份数据（手势滑动或按钮点击时调用）
   const precomputeTransition = useCallback(
     (dir: number) => {
-      const d = dataRef.current;
+      const d = gridData;
       const target = computeAdjacent(d.year, d.month, dir);
       const prev = computeAdjacent(target.y, target.m, 1);
       const next = computeAdjacent(target.y, target.m, -1);
       pendingRef.current = {
-        dir,
         year: target.y,
         month: target.m,
         label: computeLabel(target.y, target.m),
@@ -284,29 +293,37 @@ export function Calendar({ onDayPress, hasRecords, getDailyTotal }: Props) {
         nextGrid: filterVisible(buildGrid(next.y, next.m, today)),
       };
     },
-    [today]
+    [today, gridData]
   );
 
-  // 动画完成时直接应用已预计算的数据，零计算延迟
-  // 注意：isSwiping 保持 true，防止新手势在渲染期间穿透
+  // 动画完成时原子更新 state，消除 ref + state 不一致导致的闪烁
   const applyTransition = useCallback(() => {
     const pending = pendingRef.current;
     if (!pending) return;
     pendingRef.current = null;
-    const d = dataRef.current;
-    d.year = pending.year;
-    d.month = pending.month;
-    d.label = pending.label;
-    d.currGrid = pending.currGrid;
-    d.prevGrid = pending.prevGrid;
-    d.nextGrid = pending.nextGrid;
-    setMonthLabel(d.label);
-    // setMonthLabel 触发自然的 React 渲染，不需要 forceRender
-    // 渲染完成后再释放滑动锁
+    setGridData(pending);
     requestAnimationFrame(() => {
       isSwiping.value = false;
     });
   }, [isSwiping]);
+
+  // —— 月份切换按钮 ——
+  const navigateMonth = useCallback(
+    (dir: number) => {
+      if (isSwiping.value || width === 0) return;
+      isSwiping.value = true;
+      // 动画前同步计算目标数据
+      precomputeTransition(dir);
+      const targetX = dir < 0 ? -2 * width : 0;
+      translateX.value = withTiming(targetX, { duration: ANIM_DURATION }, (finished) => {
+        if (finished) {
+          translateX.value = -width;
+          runOnJS(applyTransition)();
+        }
+      });
+    },
+    [width, precomputeTransition, applyTransition, isSwiping, translateX]
+  );
 
   // —— 布局测量 ——
   const onLayout = useCallback((e: LayoutChangeEvent) => {
@@ -345,12 +362,12 @@ export function Calendar({ onDayPress, hasRecords, getDailyTotal }: Props) {
       if (e.translationX < -SWIPE_THRESHOLD && w > 0) {
         // 左滑 → 下月
         isSwiping.value = true;
-        // 若还未预计算（快速滑动跳过 onUpdate），立即补算
+        // 动画前同步计算（若还未预计算则补算）
         if (precomputedDir.current !== -1) runOnJS(precomputeTransition)(-1);
         translateX.value = withTiming(-2 * w, { duration: ANIM_DURATION }, (finished) => {
           if (finished) {
             translateX.value = -w;
-            runOnJS(applyTransition)(); // applyTransition 负责释放 isSwiping
+            runOnJS(applyTransition)();
           }
         });
       } else if (e.translationX > SWIPE_THRESHOLD && w > 0) {
@@ -373,13 +390,15 @@ export function Calendar({ onDayPress, hasRecords, getDailyTotal }: Props) {
     transform: [{ translateX: translateX.value }],
   }));
 
-  const d = dataRef.current;
+  const d = gridData;
 
   if (width === 0) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <ThemedText type="title" style={styles.monthLabelText}>{monthLabel}</ThemedText>
+          <View style={styles.headerSpacer} />
+          <ThemedText type="title" style={styles.monthLabelText}>{gridData.label}</ThemedText>
+          <View style={styles.headerSpacer} />
         </View>
         <View style={styles.weekRow}>
           {WEEKDAYS.map((wd, i) => (
@@ -398,7 +417,19 @@ export function Calendar({ onDayPress, hasRecords, getDailyTotal }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <ThemedText type="title" style={styles.monthLabelText}>{monthLabel}</ThemedText>
+        <TouchableOpacity
+          onPress={() => navigateMonth(1)}
+          hitSlop={12}
+          style={styles.headerArrow}>
+          <ThemedText style={[styles.arrowText, { color: mutedColor }]}>‹</ThemedText>
+        </TouchableOpacity>
+        <ThemedText type="title" style={styles.monthLabelText}>{gridData.label}</ThemedText>
+        <TouchableOpacity
+          onPress={() => navigateMonth(-1)}
+          hitSlop={12}
+          style={styles.headerArrow}>
+          <ThemedText style={[styles.arrowText, { color: mutedColor }]}>›</ThemedText>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.weekRow}>
@@ -437,9 +468,26 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 8,
     paddingTop: 4,
     paddingBottom: 8,
+  },
+  headerSpacer: {
+    width: 36,
+  },
+  headerArrow: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  arrowText: {
+    fontSize: 28,
+    fontWeight: '300',
+    lineHeight: 32,
   },
   monthLabelText: {
     fontSize: 22,
@@ -454,6 +502,7 @@ const styles = StyleSheet.create({
   },
   weekRow: {
     flexDirection: 'row',
+    width: '100%',
   },
   weekCell: {
     flex: 1,
@@ -473,6 +522,25 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textAlign: 'center',
   },
+  dayWrapper: {
+    position: 'relative',
+  },
+  restBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -10,
+    borderRadius: 6,
+    paddingHorizontal: 3,
+    paddingVertical: 0,
+    minWidth: 14,
+    alignItems: 'center',
+  },
+  restBadgeText: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: '#fff',
+    lineHeight: 11,
+  },
   todayCircle: {
     width: 32,
     height: 32,
@@ -481,11 +549,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   holidayText: {
-    fontSize: 9,
+    fontSize: 10,
     textAlign: 'center',
   },
   amountText: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '600',
     textAlign: 'center',
   },
