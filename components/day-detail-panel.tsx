@@ -19,7 +19,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { useAppContext } from '@/components/app-context';
-import { getHoliday } from '@/constants/holidays';
+import { getHoliday, getRestDayBadge } from '@/constants/holidays';
 import { formatAmount, getCategoryColor } from '@/constants/currency';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { SemanticColors } from '@/constants/theme';
@@ -58,6 +58,7 @@ export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: 
   const records = getByDate(dateKey);
   const dailyTotal = getDailyTotal(dateKey);
   const holiday = getHoliday(year, month, day);
+  const restBadge = getRestDayBadge(year, month, day);
   const date = new Date(year, month, day);
   const weekday = WEEKDAY_NAMES[date.getDay()];
   const activeTrip = getActiveTrip(dateKey);
@@ -147,6 +148,19 @@ export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: 
             <View style={[styles.holidayBadge, { backgroundColor: holidayColor + '20' }]}>
               <ThemedText style={[styles.holidayBadgeText, { color: holidayColor }]}>
                 {holiday}
+              </ThemedText>
+            </View>
+          )}
+          {restBadge && (
+            <View style={[
+              styles.holidayBadge,
+              { backgroundColor: (restBadge === '休' ? SemanticColors.success : SemanticColors.warning) + '20' },
+            ]}>
+              <ThemedText style={[
+                styles.holidayBadgeText,
+                { color: restBadge === '休' ? SemanticColors.success : SemanticColors.warning },
+              ]}>
+                {restBadge === '休' ? '休息日' : '调休上班'}
               </ThemedText>
             </View>
           )}

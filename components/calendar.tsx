@@ -111,10 +111,6 @@ function buildGrid(year: number, month: number, today: Date): DayCell[][] {
   return grid;
 }
 
-function filterVisible(weeks: DayCell[][]): DayCell[][] {
-  return weeks.filter((w) => w.some((c) => c.currentMonth));
-}
-
 function computeLabel(y: number, m: number): string {
   return `${y}年${m + 1}月`;
 }
@@ -249,9 +245,9 @@ export function Calendar({ onDayPress, hasRecords, getDailyTotal }: Props) {
       year: y,
       month: m,
       label: computeLabel(y, m),
-      currGrid: filterVisible(buildGrid(y, m, today)),
-      prevGrid: filterVisible(buildGrid(prev.y, prev.m, today)),
-      nextGrid: filterVisible(buildGrid(next.y, next.m, today)),
+      currGrid: buildGrid(y, m, today),
+      prevGrid: buildGrid(prev.y, prev.m, today),
+      nextGrid: buildGrid(next.y, next.m, today),
     };
   });
 
@@ -288,9 +284,9 @@ export function Calendar({ onDayPress, hasRecords, getDailyTotal }: Props) {
         year: target.y,
         month: target.m,
         label: computeLabel(target.y, target.m),
-        currGrid: filterVisible(buildGrid(target.y, target.m, today)),
-        prevGrid: filterVisible(buildGrid(prev.y, prev.m, today)),
-        nextGrid: filterVisible(buildGrid(next.y, next.m, today)),
+        currGrid: buildGrid(target.y, target.m, today),
+        prevGrid: buildGrid(prev.y, prev.m, today),
+        nextGrid: buildGrid(next.y, next.m, today),
       };
     },
     [today, gridData]
@@ -509,7 +505,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-start',
     paddingVertical: 8,
-    minHeight: 58,
+    minHeight: 62,
     gap: 1,
   },
   weekdayText: {
@@ -527,8 +523,8 @@ const styles = StyleSheet.create({
   },
   restBadge: {
     position: 'absolute',
-    top: -4,
-    right: -10,
+    top: -3,
+    right: -9,
     borderRadius: 6,
     paddingHorizontal: 3,
     paddingVertical: 0,
@@ -536,10 +532,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   restBadgeText: {
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: '700',
     color: '#fff',
-    lineHeight: 11,
+    lineHeight: 12,
   },
   todayCircle: {
     width: 32,
