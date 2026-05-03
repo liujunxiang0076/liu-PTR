@@ -57,6 +57,7 @@ type Props = {
   getDailyTotal: (dateKey: string) => number;
   onSettingsPress?: () => void;
   onBackupPress?: () => void;
+  onSearchPress?: () => void;
 };
 
 function buildGrid(year: number, month: number, today: Date): DayCell[][] {
@@ -234,7 +235,7 @@ function MonthGrid({
 
 // ———————————————————— 主组件 ————————————————————
 
-export function Calendar({ onDayPress, hasRecords, getDailyTotal, onSettingsPress, onBackupPress }: Props) {
+export function Calendar({ onDayPress, hasRecords, getDailyTotal, onSettingsPress, onBackupPress, onSearchPress }: Props) {
   const today = useMemo(() => new Date(), []);
 
   // 月份状态 + 网格数据合为一个 state，保证原子更新
@@ -398,6 +399,14 @@ export function Calendar({ onDayPress, hasRecords, getDailyTotal, onSettingsPres
           <ThemedText type="title" style={styles.monthLabelText}>{gridData.label}</ThemedText>
           <View style={styles.headerRightGroup}>
             <View style={styles.headerSpacer} />
+            {onSearchPress && (
+              <TouchableOpacity
+                onPress={onSearchPress}
+                hitSlop={12}
+                style={styles.headerArrow}>
+                <ThemedText style={[styles.arrowText, { color: mutedColor }]}>🔍</ThemedText>
+              </TouchableOpacity>
+            )}
             {onBackupPress && (
               <TouchableOpacity
                 onPress={onBackupPress}
@@ -447,6 +456,14 @@ export function Calendar({ onDayPress, hasRecords, getDailyTotal, onSettingsPres
             style={styles.headerArrow}>
             <ThemedText style={[styles.arrowText, { color: mutedColor }]}>›</ThemedText>
           </TouchableOpacity>
+          {onSearchPress && (
+            <TouchableOpacity
+              onPress={onSearchPress}
+              hitSlop={12}
+              style={styles.headerArrow}>
+              <ThemedText style={[styles.arrowText, { color: mutedColor }]}>🔍</ThemedText>
+            </TouchableOpacity>
+          )}
           {onBackupPress && (
             <TouchableOpacity
               onPress={onBackupPress}

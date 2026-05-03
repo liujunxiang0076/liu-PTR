@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { type Currency, type ExpenseItem, type ExpensesMap } from '@/types/expense';
+import { type Currency, type ExpenseCategory, type ExpenseItem, type ExpensesMap } from '@/types/expense';
 import { convertToCNY, uid } from '@/constants/currency';
 
 const STORAGE_KEY = '@expenses:v1';
@@ -162,6 +162,22 @@ export function useExpenses() {
     setExpenses(data);
   }, []);
 
+  const search = useCallback(
+    (query: string, category: ExpenseCategory | null) => {
+      const trimmed = query.trim().toLowerCase();
+      const results: { dateKey: string; item: ExpenseItem }[] = [];
+      for (const [dateKey, list] of Object.entries(expenses)) {
+        for (const item of list) {
+          if (category && item.category !== category) continue;
+          if (trimmed && !item.notes.toLowerCase().includes(trimmed)) continue;
+          results.push({ dateKey, item });
+        }
+      }
+      return results.sort((a, b) => b.dateKey.localeCompare(a.dateKey) || b.item.createdAt - a.item.createdAt);
+    },
+    [expenses]
+  );
+
   return {
     getByDate,
     add,
@@ -175,6 +191,7 @@ export function useExpenses() {
     getMonthlyTotal,
     getMonthExpenses,
     importAll,
+    search,
     loaded,
   };
 }

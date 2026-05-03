@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo } from 'react';
 
-import { type Currency, type DailyBudget, type ExpenseItem, type ExpensesMap, type Trip } from '@/types/expense';
+import { type Currency, type DailyBudget, type ExpenseCategory, type ExpenseItem, type ExpensesMap, type Trip } from '@/types/expense';
 import { useExpenses } from '@/hooks/use-expenses';
 import { useTrips } from '@/hooks/use-trips';
 import { useExchangeRates } from '@/hooks/use-exchange-rates';
@@ -18,6 +18,7 @@ type ExpenseContextType = {
   getByDateRange: (startDate: string, endDate: string) => ExpenseItem[];
   getMonthlyTotal: (year: number, month: number) => { total: number; count: number };
   getMonthExpenses: (year: number, month: number) => ExpenseItem[];
+  searchExpenses: (query: string, category: ExpenseCategory | null) => { dateKey: string; item: ExpenseItem }[];
   loaded: boolean;
 };
 
@@ -94,6 +95,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     getMonthlyTotal: (year: number, month: number) =>
       expenses.getMonthlyTotal(year, month, rates),
     getMonthExpenses: expenses.getMonthExpenses,
+    searchExpenses: expenses.search,
     loaded: expenses.loaded,
   }), [expenses, rates]);
 
