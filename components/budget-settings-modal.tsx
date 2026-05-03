@@ -12,7 +12,7 @@ import {
 
 import { ThemedText } from '@/components/themed-text';
 import { useAppContext } from '@/components/app-context';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { useAppColors } from '@/hooks/use-app-colors';
 import { SemanticColors } from '@/constants/theme';
 
 type Props = {
@@ -27,12 +27,7 @@ export function BudgetSettingsModal({ visible, onClose }: Props) {
   const [weekend, setWeekend] = useState('');
   const [holiday, setHoliday] = useState('');
 
-  const tint = useThemeColor({}, 'tint');
-  const textColor = useThemeColor({}, 'text');
-  const mutedColor = useThemeColor({ light: SemanticColors.muted.light, dark: SemanticColors.muted.dark }, 'icon');
-  const borderColor = useThemeColor({ light: SemanticColors.border.light, dark: SemanticColors.border.dark }, 'icon');
-  const inputBg = useThemeColor({ light: SemanticColors.inputBg.light, dark: SemanticColors.inputBg.dark }, 'background');
-  const panelBg = useThemeColor({ light: '#FFFFFF', dark: '#151718' }, 'background');
+  const { tint, text: textColor, muted: mutedColor, border: borderColor, inputBg, panelBg } = useAppColors();
 
   useEffect(() => {
     if (visible) {

@@ -13,7 +13,7 @@ import {
 
 import { ThemedText } from '@/components/themed-text';
 import { useAppContext } from '@/components/app-context';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { useAppColors } from '@/hooks/use-app-colors';
 import { SemanticColors } from '@/constants/theme';
 
 type Props = {
@@ -32,12 +32,7 @@ export function TripFormModal({ visible, editingId, onClose }: Props) {
   const [budget, setBudget] = useState('');
   const [error, setError] = useState('');
 
-  const tint = useThemeColor({}, 'tint');
-  const textColor = useThemeColor({}, 'text');
-  const mutedColor = useThemeColor({ light: '#9BA1A6', dark: '#687076' }, 'icon');
-  const borderColor = useThemeColor({ light: '#E5E5E5', dark: '#2A2A2A' }, 'icon');
-  const inputBg = useThemeColor({ light: '#F5F5F5', dark: '#1E1E1E' }, 'background');
-  const panelBg = useThemeColor({ light: '#FFFFFF', dark: '#151718' }, 'background');
+  const { tint, text: textColor, muted: mutedColor, border: borderColor, inputBg, panelBg } = useAppColors();
 
   useEffect(() => {
     if (visible && editingId) {

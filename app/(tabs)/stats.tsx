@@ -5,7 +5,7 @@ import * as Clipboard from 'expo-clipboard';
 
 import { ThemedText } from '@/components/themed-text';
 import { useAppContext } from '@/components/app-context';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { useAppColors } from '@/hooks/use-app-colors';
 import { CATEGORIES } from '@/types/expense';
 import {
   getCategoryColor,
@@ -24,11 +24,7 @@ export default function StatsScreen() {
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
 
-  const tint = useThemeColor({}, 'tint');
-  const textColor = useThemeColor({}, 'text');
-  const mutedColor = useThemeColor({ light: '#9BA1A6', dark: '#687076' }, 'icon');
-  const borderColor = useThemeColor({ light: '#E5E5E5', dark: '#2A2A2A' }, 'icon');
-  const panelBg = useThemeColor({ light: '#FFFFFF', dark: '#151718' }, 'background');
+  const { tint, text: textColor, muted: mutedColor, border: borderColor, panelBg } = useAppColors();
 
   // —— 月度数据 ——
   const monthLabel = `${year}年${month + 1}月`;

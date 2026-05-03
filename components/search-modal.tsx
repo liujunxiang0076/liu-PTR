@@ -12,8 +12,7 @@ import {
 
 import { ThemedText } from '@/components/themed-text';
 import { useAppContext } from '@/components/app-context';
-import { useThemeColor } from '@/hooks/use-theme-color';
-import { SemanticColors } from '@/constants/theme';
+import { useAppColors } from '@/hooks/use-app-colors';
 import { formatAmount, getCategoryColor } from '@/constants/currency';
 import {
   type ExpenseCategory,
@@ -31,12 +30,7 @@ export function SearchModal({ visible, onClose }: Props) {
   const [query, setQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<ExpenseCategory | null>(null);
 
-  const tint = useThemeColor({}, 'tint');
-  const textColor = useThemeColor({}, 'text');
-  const mutedColor = useThemeColor({ light: SemanticColors.muted.light, dark: SemanticColors.muted.dark }, 'icon');
-  const borderColor = useThemeColor({ light: SemanticColors.border.light, dark: SemanticColors.border.dark }, 'icon');
-  const inputBg = useThemeColor({ light: SemanticColors.inputBg.light, dark: SemanticColors.inputBg.dark }, 'background');
-  const panelBg = useThemeColor({ light: SemanticColors.panelBg.light, dark: SemanticColors.panelBg.dark }, 'background');
+  const { tint, text: textColor, muted: mutedColor, border: borderColor, inputBg, panelBg } = useAppColors();
 
   const results = useMemo(() => {
     if (!query.trim() && !categoryFilter) return [];

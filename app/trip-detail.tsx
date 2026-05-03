@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { useAppContext } from '@/components/app-context';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { useAppColors } from '@/hooks/use-app-colors';
 import { formatAmount, getCategoryColor, sumExpensesInCNY } from '@/constants/currency';
 import { SemanticColors } from '@/constants/theme';
 import { CATEGORIES, type ExpenseItem } from '@/types/expense';
@@ -14,11 +14,7 @@ export default function TripDetailScreen() {
   const { getTripById, getByTrip, rates } = useAppContext();
   const router = useRouter();
 
-  const tint = useThemeColor({}, 'tint');
-  const textColor = useThemeColor({}, 'text');
-  const mutedColor = useThemeColor({ light: '#9BA1A6', dark: '#687076' }, 'icon');
-  const borderColor = useThemeColor({ light: '#E5E5E5', dark: '#2A2A2A' }, 'icon');
-  const panelBg = useThemeColor({ light: '#FFFFFF', dark: '#151718' }, 'background');
+  const { tint, text: textColor, muted: mutedColor, border: borderColor, panelBg } = useAppColors();
 
   const trip = getTripById(tripId);
   const expenses = getByTrip(tripId);

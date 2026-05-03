@@ -11,7 +11,7 @@ import Animated, {
 import { getHoliday, getRestDayBadge, isWeekend, type RestDayBadge } from '@/constants/holidays';
 import { compactAmount } from '@/constants/currency';
 import { SemanticColors } from '@/constants/theme';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { useAppColors } from '@/hooks/use-app-colors';
 import { ThemedText } from './themed-text';
 
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
@@ -272,10 +272,9 @@ export function Calendar({ onDayPress, hasRecords, getDailyTotal, getDayBudget, 
 
   const [width, setWidth] = useState(0);
 
-  const tint = useThemeColor({}, 'tint');
-  const mutedColor = useThemeColor({ light: SemanticColors.muted.light, dark: SemanticColors.muted.dark }, 'icon');
-  const holidayColor = useThemeColor({ light: SemanticColors.danger, dark: SemanticColors.dangerDark }, 'tint');
-  const weekendColor = useThemeColor({ light: SemanticColors.danger, dark: SemanticColors.dangerDark }, 'tint');
+  const { tint, muted: mutedColor, danger: dangerColor } = useAppColors();
+  const holidayColor = dangerColor;
+  const weekendColor = dangerColor;
 
   const colors = { tint, muted: mutedColor, holiday: holidayColor, weekend: weekendColor };
 

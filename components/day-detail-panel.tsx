@@ -21,7 +21,7 @@ import Animated, {
 import { useAppContext } from '@/components/app-context';
 import { getHoliday, getRestDayBadge } from '@/constants/holidays';
 import { formatAmount, getCategoryColor } from '@/constants/currency';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { useAppColors } from '@/hooks/use-app-colors';
 import { SemanticColors } from '@/constants/theme';
 import { ThemedText } from './themed-text';
 import {
@@ -141,14 +141,8 @@ export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: 
     Keyboard.dismiss();
   }, [amount, currency, category, notes, editingId, addExpense, updateExpense, dateKey, activeTrip, resetForm]);
 
-  const tint = useThemeColor({}, 'tint');
-  const textColor = useThemeColor({}, 'text');
-  const mutedColor = useThemeColor({ light: SemanticColors.muted.light, dark: SemanticColors.muted.dark }, 'icon');
-  const borderColor = useThemeColor({ light: SemanticColors.border.light, dark: SemanticColors.border.dark }, 'icon');
-  const inputBg = useThemeColor({ light: SemanticColors.inputBg.light, dark: SemanticColors.inputBg.dark }, 'background');
-  const panelBg = useThemeColor({ light: SemanticColors.panelBg.light, dark: SemanticColors.panelBg.dark }, 'background');
-  const dangerColor = useThemeColor({ light: SemanticColors.danger, dark: SemanticColors.dangerDark }, 'tint');
-  const holidayColor = useThemeColor({ light: SemanticColors.danger, dark: SemanticColors.dangerDark }, 'tint');
+  const { tint, text: textColor, muted: mutedColor, border: borderColor, inputBg, panelBg, danger: dangerColor } = useAppColors();
+  const holidayColor = dangerColor;
 
   const canAdd = parseFloat(amount) > 0;
 

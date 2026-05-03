@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { TripFormModal } from '@/components/trip-form-modal';
 import { useAppContext } from '@/components/app-context';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { useAppColors } from '@/hooks/use-app-colors';
 import { sumExpensesInCNY } from '@/constants/currency';
 import { SemanticColors } from '@/constants/theme';
 
@@ -16,11 +16,7 @@ export default function TripsScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const router = useRouter();
 
-  const tint = useThemeColor({}, 'tint');
-  const borderColor = useThemeColor({ light: '#E5E5E5', dark: '#2A2A2A' }, 'icon');
-  const mutedColor = useThemeColor({ light: '#9BA1A6', dark: '#687076' }, 'icon');
-  const panelBg = useThemeColor({ light: '#FFFFFF', dark: '#151718' }, 'background');
-  const dangerColor = useThemeColor({ light: '#E85D5D', dark: '#FF7B7B' }, 'tint');
+  const { tint, border: borderColor, muted: mutedColor, panelBg, danger: dangerColor } = useAppColors();
 
   const handleCreate = useCallback(() => {
     setEditingId(null);
