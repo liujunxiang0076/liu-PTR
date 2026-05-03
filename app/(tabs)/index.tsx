@@ -8,6 +8,7 @@ import { BudgetSettingsModal } from '@/components/budget-settings-modal';
 import { BackupModal } from '@/components/backup-modal';
 import { SearchModal } from '@/components/search-modal';
 import { useAppContext } from '@/components/app-context';
+import { useHolidaySync } from '@/hooks/use-holiday-sync';
 
 export default function HomeScreen() {
   const [panel, setPanel] = useState<{
@@ -22,6 +23,7 @@ export default function HomeScreen() {
   const [searchVisible, setSearchVisible] = useState(false);
 
   const { hasRecords, getDailyTotal, getDayBudget } = useAppContext();
+  useHolidaySync();
 
   const handleDayPress = useCallback(
     (dateKey: string, year: number, month: number, day: number) => {

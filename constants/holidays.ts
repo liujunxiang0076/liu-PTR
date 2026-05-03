@@ -219,6 +219,26 @@ const MAKEUP_WORKDAYS: Record<string, Set<string>> = {
   ]),
 };
 
+/** 从 API 获取的休/班数据（运行时填充，优先级高于硬编码数据） */
+let apiRestDays: Record<string, Set<string>> = {};
+let apiMakeupWorkdays: Record<string, Set<string>> = {};
+
+/** 将 API 返回的 days 数组写入内存 */
+export function setApiHolidayData(
+  year: number,
+  days: { date: string; isOffDay: boolean }[],
+) {
+  const y = String(year);
+  const rest = new Set<string>();
+  const makeup = new Set<string>();
+  for (const d of days) {
+    if (d.isOffDay) rest.add(d.date);
+    else makeup.add(d.date);
+  }
+  apiRestDays[y] = rest;
+  apiMakeupWorkdays[y] = makeup;
+}
+
 /** 休息日标记类型 */
 export type RestDayBadge = '休' | '班' | null;
 
@@ -235,12 +255,12 @@ export function getRestDayBadge(year: number, month: number, day: number): RestD
   const weekend = isWeekend(year, month, day);
 
   // 周末被调为上班（优先级高于放假）
-  if (weekend && MAKEUP_WORKDAYS[yearStr]?.has(dateKey)) {
+  if (weekend && (MAKEUP_WORKDAYS[yearStr]?.has(dateKey) || apiMakeupWorkdays[yearStr]?.has(dateKey))) {
     return '班';
   }
 
   // 法定假日安排内所有日期标"休"（含工作日放假 + 假期内的周末）
-  if (REST_DAYS[yearStr]?.has(dateKey)) {
+  if (REST_DAYS[yearStr]?.has(dateKey) || apiRestDays[yearStr]?.has(dateKey)) {
     return '休';
   }
 
