@@ -46,7 +46,7 @@ const WEEKDAY_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五
 const PANEL_DURATION = 280;
 
 export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: Props) {
-  const { getByDate, addExpense, removeExpense, getDailyTotal, getActiveTrip, convert } = useAppContext();
+  const { getByDate, addExpense, removeExpense, getDailyTotal, getActiveTrip, convert, getDayBudget } = useAppContext();
 
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState<Currency>('CNY');
@@ -62,6 +62,12 @@ export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: 
   const date = new Date(year, month, day);
   const weekday = WEEKDAY_NAMES[date.getDay()];
   const activeTrip = getActiveTrip(dateKey);
+  const dayBudget = getDayBudget(year, month, day);
+  const budgetPct = dayBudget.amount > 0 ? Math.min((dailyTotal / dayBudget.amount) * 100, 100) : 0;
+  const budgetOver = dayBudget.amount > 0 && dailyTotal > dayBudget.amount;
+  const budgetColor = budgetOver
+    ? SemanticColors.danger
+    : budgetPct > 70 ? SemanticColors.warning : SemanticColors.success;
 
   const overlayOpacity = useSharedValue(0);
   const panelY = useSharedValue(1);

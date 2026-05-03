@@ -1,9 +1,10 @@
 import { createContext, useCallback, useContext, useMemo } from 'react';
 
-import { type Currency, type ExpenseItem, type Trip } from '@/types/expense';
+import { type Currency, type DailyBudget, type ExpenseItem, type Trip } from '@/types/expense';
 import { useExpenses } from '@/hooks/use-expenses';
 import { useTrips } from '@/hooks/use-trips';
 import { useExchangeRates } from '@/hooks/use-exchange-rates';
+import { useBudget } from '@/hooks/use-budget';
 
 // 费用 Context
 type ExpenseContextType = {
@@ -39,7 +40,11 @@ type ExchangeRateContextType = {
 };
 
 // 组合 Context（保持向后兼容）
-type AppContextType = ExpenseContextType & TripContextType & ExchangeRateContextType;
+type AppContextType = ExpenseContextType & TripContextType & ExchangeRateContextType & {
+  budget: DailyBudget;
+  updateBudget: (updates: Partial<DailyBudget>) => void;
+  getDayBudget: (year: number, month: number, day: number) => { type: 'workday' | 'weekend' | 'holiday'; amount: number };
+};
 
 const ExpenseContext = createContext<ExpenseContextType | null>(null);
 const TripContext = createContext<TripContextType | null>(null);
@@ -50,6 +55,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const expenses = useExpenses();
   const trips = useTrips();
   const exchangeRates = useExchangeRates();
+  const budget = useBudget();
 
   const rates = exchangeRates.rates.rates;
 
@@ -93,8 +99,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     ...expenseValue,
     ...tripValue,
     ...exchangeRateValue,
-    loaded: expenses.loaded && trips.loaded,
-  }), [expenseValue, tripValue, exchangeRateValue, expenses.loaded, trips.loaded]);
+    budget: budget.budget,
+    updateBudget: budget.update,
+    getDayBudget: budget.getDayBudget,
+    loaded: expenses.loaded && trips.loaded && budget.loaded,
+  }), [expenseValue, tripValue, exchangeRateValue, budget, expenses.loaded, trips.loaded]);
 
   return (
     <ExpenseContext.Provider value={expenseValue}>

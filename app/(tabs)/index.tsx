@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Calendar } from '@/components/calendar';
 import { DayDetailPanel } from '@/components/day-detail-panel';
+import { BudgetSettingsModal } from '@/components/budget-settings-modal';
 import { useAppContext } from '@/components/app-context';
 
 export default function HomeScreen() {
@@ -14,6 +15,7 @@ export default function HomeScreen() {
     month: number;
     day: number;
   }>({ visible: false, dateKey: '', year: 0, month: 0, day: 0 });
+  const [settingsVisible, setSettingsVisible] = useState(false);
 
   const { hasRecords, getDailyTotal } = useAppContext();
 
@@ -34,6 +36,7 @@ export default function HomeScreen() {
         onDayPress={handleDayPress}
         hasRecords={hasRecords}
         getDailyTotal={getDailyTotal}
+        onSettingsPress={() => setSettingsVisible(true)}
       />
       <DayDetailPanel
         visible={panel.visible}
@@ -42,6 +45,10 @@ export default function HomeScreen() {
         month={panel.month}
         day={panel.day}
         onClose={handleClose}
+      />
+      <BudgetSettingsModal
+        visible={settingsVisible}
+        onClose={() => setSettingsVisible(false)}
       />
     </SafeAreaView>
   );

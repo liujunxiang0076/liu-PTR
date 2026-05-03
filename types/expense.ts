@@ -60,6 +60,13 @@ export const CATEGORY_COLORS: Record<ExpenseCategory, string> = {
   '其他': '#95A5A6',
 };
 
+/** 每日预算配置（单位：CNY） */
+export type DailyBudget = {
+  workday: number;
+  weekend: number;
+  holiday: number;
+};
+
 /** 币种符号 */
 export const CURRENCY_SYMBOLS: Record<Currency, string> = {
   CNY: '¥',

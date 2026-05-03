@@ -55,6 +55,7 @@ type Props = {
   onDayPress: (dateKey: string, year: number, month: number, day: number) => void;
   hasRecords: (dateKey: string) => boolean;
   getDailyTotal: (dateKey: string) => number;
+  onSettingsPress?: () => void;
 };
 
 function buildGrid(year: number, month: number, today: Date): DayCell[][] {
@@ -232,7 +233,7 @@ function MonthGrid({
 
 // ———————————————————— 主组件 ————————————————————
 
-export function Calendar({ onDayPress, hasRecords, getDailyTotal }: Props) {
+export function Calendar({ onDayPress, hasRecords, getDailyTotal, onSettingsPress }: Props) {
   const today = useMemo(() => new Date(), []);
 
   // 月份状态 + 网格数据合为一个 state，保证原子更新
@@ -394,7 +395,17 @@ export function Calendar({ onDayPress, hasRecords, getDailyTotal }: Props) {
         <View style={styles.header}>
           <View style={styles.headerSpacer} />
           <ThemedText type="title" style={styles.monthLabelText}>{gridData.label}</ThemedText>
-          <View style={styles.headerSpacer} />
+          <View style={styles.headerRightGroup}>
+            <View style={styles.headerSpacer} />
+            {onSettingsPress && (
+              <TouchableOpacity
+                onPress={onSettingsPress}
+                hitSlop={12}
+                style={styles.headerArrow}>
+                <ThemedText style={[styles.arrowText, { color: mutedColor }]}>⚙</ThemedText>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
         <View style={styles.weekRow}>
           {WEEKDAYS.map((wd, i) => (
@@ -420,12 +431,22 @@ export function Calendar({ onDayPress, hasRecords, getDailyTotal }: Props) {
           <ThemedText style={[styles.arrowText, { color: mutedColor }]}>‹</ThemedText>
         </TouchableOpacity>
         <ThemedText type="title" style={styles.monthLabelText}>{gridData.label}</ThemedText>
-        <TouchableOpacity
-          onPress={() => navigateMonth(-1)}
-          hitSlop={12}
-          style={styles.headerArrow}>
-          <ThemedText style={[styles.arrowText, { color: mutedColor }]}>›</ThemedText>
-        </TouchableOpacity>
+        <View style={styles.headerRightGroup}>
+          <TouchableOpacity
+            onPress={() => navigateMonth(-1)}
+            hitSlop={12}
+            style={styles.headerArrow}>
+            <ThemedText style={[styles.arrowText, { color: mutedColor }]}>›</ThemedText>
+          </TouchableOpacity>
+          {onSettingsPress && (
+            <TouchableOpacity
+              onPress={onSettingsPress}
+              hitSlop={12}
+              style={styles.headerArrow}>
+              <ThemedText style={[styles.arrowText, { color: mutedColor }]}>⚙</ThemedText>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       <View style={styles.weekRow}>
@@ -473,6 +494,10 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     width: 36,
+  },
+  headerRightGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   headerArrow: {
     width: 36,
