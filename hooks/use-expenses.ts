@@ -158,6 +158,10 @@ export function useExpenses() {
     });
   }, []);
 
+  const importAll = useCallback((data: ExpensesMap) => {
+    setExpenses(data);
+  }, []);
+
   return {
     getByDate,
     add,
@@ -170,6 +174,7 @@ export function useExpenses() {
     getByDateRange,
     getMonthlyTotal,
     getMonthExpenses,
+    importAll,
     loaded,
   };
 }

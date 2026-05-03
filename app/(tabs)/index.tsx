@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from '@/components/calendar';
 import { DayDetailPanel } from '@/components/day-detail-panel';
 import { BudgetSettingsModal } from '@/components/budget-settings-modal';
+import { BackupModal } from '@/components/backup-modal';
 import { useAppContext } from '@/components/app-context';
 
 export default function HomeScreen() {
@@ -16,6 +17,7 @@ export default function HomeScreen() {
     day: number;
   }>({ visible: false, dateKey: '', year: 0, month: 0, day: 0 });
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const [backupVisible, setBackupVisible] = useState(false);
 
   const { hasRecords, getDailyTotal } = useAppContext();
 
@@ -37,6 +39,7 @@ export default function HomeScreen() {
         hasRecords={hasRecords}
         getDailyTotal={getDailyTotal}
         onSettingsPress={() => setSettingsVisible(true)}
+        onBackupPress={() => setBackupVisible(true)}
       />
       <DayDetailPanel
         visible={panel.visible}
@@ -49,6 +52,10 @@ export default function HomeScreen() {
       <BudgetSettingsModal
         visible={settingsVisible}
         onClose={() => setSettingsVisible(false)}
+      />
+      <BackupModal
+        visible={backupVisible}
+        onClose={() => setBackupVisible(false)}
       />
     </SafeAreaView>
   );

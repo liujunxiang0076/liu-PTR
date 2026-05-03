@@ -56,6 +56,7 @@ type Props = {
   hasRecords: (dateKey: string) => boolean;
   getDailyTotal: (dateKey: string) => number;
   onSettingsPress?: () => void;
+  onBackupPress?: () => void;
 };
 
 function buildGrid(year: number, month: number, today: Date): DayCell[][] {
@@ -233,7 +234,7 @@ function MonthGrid({
 
 // ———————————————————— 主组件 ————————————————————
 
-export function Calendar({ onDayPress, hasRecords, getDailyTotal, onSettingsPress }: Props) {
+export function Calendar({ onDayPress, hasRecords, getDailyTotal, onSettingsPress, onBackupPress }: Props) {
   const today = useMemo(() => new Date(), []);
 
   // 月份状态 + 网格数据合为一个 state，保证原子更新
@@ -397,6 +398,14 @@ export function Calendar({ onDayPress, hasRecords, getDailyTotal, onSettingsPres
           <ThemedText type="title" style={styles.monthLabelText}>{gridData.label}</ThemedText>
           <View style={styles.headerRightGroup}>
             <View style={styles.headerSpacer} />
+            {onBackupPress && (
+              <TouchableOpacity
+                onPress={onBackupPress}
+                hitSlop={12}
+                style={styles.headerArrow}>
+                <ThemedText style={[styles.arrowText, { color: mutedColor }]}>↑↓</ThemedText>
+              </TouchableOpacity>
+            )}
             {onSettingsPress && (
               <TouchableOpacity
                 onPress={onSettingsPress}
@@ -438,6 +447,14 @@ export function Calendar({ onDayPress, hasRecords, getDailyTotal, onSettingsPres
             style={styles.headerArrow}>
             <ThemedText style={[styles.arrowText, { color: mutedColor }]}>›</ThemedText>
           </TouchableOpacity>
+          {onBackupPress && (
+            <TouchableOpacity
+              onPress={onBackupPress}
+              hitSlop={12}
+              style={styles.headerArrow}>
+              <ThemedText style={[styles.arrowText, { color: mutedColor }]}>↑↓</ThemedText>
+            </TouchableOpacity>
+          )}
           {onSettingsPress && (
             <TouchableOpacity
               onPress={onSettingsPress}

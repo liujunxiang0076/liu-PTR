@@ -78,5 +78,9 @@ export function useTrips() {
     [trips]
   );
 
-  return { add, update, remove, getById, getAll, getActiveTrip, getTripsInMonth, loaded };
+  const importAll = useCallback((data: Record<string, Trip>) => {
+    setTrips(data);
+  }, []);
+
+  return { add, update, remove, getById, getAll, getActiveTrip, getTripsInMonth, importAll, loaded };
 }

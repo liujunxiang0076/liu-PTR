@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo } from 'react';
 
-import { type Currency, type DailyBudget, type ExpenseItem, type Trip } from '@/types/expense';
+import { type Currency, type DailyBudget, type ExpenseItem, type ExpensesMap, type Trip } from '@/types/expense';
 import { useExpenses } from '@/hooks/use-expenses';
 import { useTrips } from '@/hooks/use-trips';
 import { useExchangeRates } from '@/hooks/use-exchange-rates';
@@ -44,6 +44,7 @@ type AppContextType = ExpenseContextType & TripContextType & ExchangeRateContext
   budget: DailyBudget;
   updateBudget: (updates: Partial<DailyBudget>) => void;
   getDayBudget: (year: number, month: number, day: number) => { type: 'workday' | 'weekend' | 'holiday'; amount: number };
+  importAllData: (data: { expenses: ExpensesMap; trips: Record<string, Trip>; budget: DailyBudget }) => void;
 };
 
 const ExpenseContext = createContext<ExpenseContextType | null>(null);
@@ -63,6 +64,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     trips.remove(id);
     expenses.removeByTrip(id);
   }, [trips.remove, expenses.removeByTrip]);
+
+  const importAllData = useCallback((data: { expenses: ExpensesMap; trips: Record<string, Trip>; budget: DailyBudget }) => {
+    expenses.importAll(data.expenses);
+    trips.importAll(data.trips);
+    budget.importAll(data.budget);
+  }, [expenses.importAll, trips.importAll, budget.importAll]);
 
   const tripValue: TripContextType = useMemo(() => ({
     trips: trips.getAll(),
@@ -102,8 +109,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     budget: budget.budget,
     updateBudget: budget.update,
     getDayBudget: budget.getDayBudget,
+    importAllData,
     loaded: expenses.loaded && trips.loaded && budget.loaded,
-  }), [expenseValue, tripValue, exchangeRateValue, budget, expenses.loaded, trips.loaded]);
+  }), [expenseValue, tripValue, exchangeRateValue, budget, importAllData, expenses.loaded, trips.loaded]);
 
   return (
     <ExpenseContext.Provider value={expenseValue}>

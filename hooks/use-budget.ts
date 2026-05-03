@@ -66,5 +66,9 @@ export function useBudget() {
     [budget]
   );
 
-  return { budget, update, getDayBudget, loaded };
+  const importAll = useCallback((data: DailyBudget) => {
+    setBudget(data);
+  }, []);
+
+  return { budget, update, getDayBudget, importAll, loaded };
 }
