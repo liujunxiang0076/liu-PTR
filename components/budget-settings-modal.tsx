@@ -29,9 +29,9 @@ export function BudgetSettingsModal({ visible, onClose }: Props) {
 
   const tint = useThemeColor({}, 'tint');
   const textColor = useThemeColor({}, 'text');
-  const mutedColor = useThemeColor({ light: '#9BA1A6', dark: '#687076' }, 'icon');
-  const borderColor = useThemeColor({ light: '#E5E5E5', dark: '#2A2A2A' }, 'icon');
-  const inputBg = useThemeColor({ light: '#F5F5F5', dark: '#1E1E1E' }, 'background');
+  const mutedColor = useThemeColor({ light: SemanticColors.muted.light, dark: SemanticColors.muted.dark }, 'icon');
+  const borderColor = useThemeColor({ light: SemanticColors.border.light, dark: SemanticColors.border.dark }, 'icon');
+  const inputBg = useThemeColor({ light: SemanticColors.inputBg.light, dark: SemanticColors.inputBg.dark }, 'background');
   const panelBg = useThemeColor({ light: '#FFFFFF', dark: '#151718' }, 'background');
 
   useEffect(() => {
@@ -42,13 +42,19 @@ export function BudgetSettingsModal({ visible, onClose }: Props) {
     }
   }, [visible, budget]);
 
+  const sanitizeBudget = useCallback((raw: string): number => {
+    const n = parseFloat(raw);
+    if (isNaN(n) || n < 0) return 0;
+    return Math.round(n * 100) / 100;
+  }, []);
+
   const handleSave = useCallback(() => {
-    const w = parseFloat(workday) || 0;
-    const we = parseFloat(weekend) || 0;
-    const h = parseFloat(holiday) || 0;
+    const w = sanitizeBudget(workday);
+    const we = sanitizeBudget(weekend);
+    const h = sanitizeBudget(holiday);
     updateBudget({ workday: w, weekend: we, holiday: h });
     onClose();
-  }, [workday, weekend, holiday, updateBudget, onClose]);
+  }, [workday, weekend, holiday, updateBudget, onClose, sanitizeBudget]);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>

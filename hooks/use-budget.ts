@@ -38,7 +38,12 @@ export function useBudget() {
         AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(budget));
       }, SAVE_DELAY);
     }
-    return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
+    return () => {
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(budget));
+      }
+    };
   }, [budget, loaded]);
 
   const update = useCallback((updates: Partial<DailyBudget>) => {

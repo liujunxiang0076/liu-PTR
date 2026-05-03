@@ -187,6 +187,29 @@ export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: 
           </View>
         )}
 
+        {/* 预算进度 */}
+        {dayBudget.amount > 0 && (
+          <View style={styles.budgetRow}>
+            <View style={styles.budgetInfo}>
+              <ThemedText style={[styles.budgetLabel, { color: mutedColor }]}>
+                预算 ¥{dayBudget.amount.toFixed(0)}（{dayBudget.type === 'workday' ? '工作日' : dayBudget.type === 'weekend' ? '周末' : '节假日'}）
+              </ThemedText>
+              {budgetOver ? (
+                <ThemedText style={[styles.budgetOverText, { color: budgetColor }]}>
+                  超支 ¥{(dailyTotal - dayBudget.amount).toFixed(2)}
+                </ThemedText>
+              ) : (
+                <ThemedText style={[styles.budgetLabel, { color: mutedColor }]}>
+                  {budgetPct.toFixed(0)}%
+                </ThemedText>
+              )}
+            </View>
+            <View style={[styles.budgetBar, { backgroundColor: borderColor }]}>
+              <View style={[styles.budgetFill, { width: `${budgetPct}%`, backgroundColor: budgetColor }]} />
+            </View>
+          </View>
+        )}
+
         {/* 费用列表 */}
         <FlatList
           data={records}
@@ -377,6 +400,32 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: '700',
+  },
+  budgetRow: {
+    marginBottom: 12,
+    gap: 4,
+  },
+  budgetInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  budgetLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  budgetOverText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  budgetBar: {
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  budgetFill: {
+    height: '100%',
+    borderRadius: 2,
   },
   list: {
     maxHeight: 200,
