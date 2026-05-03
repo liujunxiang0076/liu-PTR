@@ -46,13 +46,14 @@ const WEEKDAY_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五
 const PANEL_DURATION = 280;
 
 export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: Props) {
-  const { getByDate, addExpense, removeExpense, getDailyTotal, getActiveTrip, convert, getDayBudget } = useAppContext();
+  const { getByDate, addExpense, updateExpense, removeExpense, getDailyTotal, getActiveTrip, convert, getDayBudget } = useAppContext();
 
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState<Currency>('CNY');
   const [category, setCategory] = useState<ExpenseCategory>('餐饮');
   const [notes, setNotes] = useState('');
   const [shouldRender, setShouldRender] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const amountRef = useRef<TextInput>(null);
 
   const records = getByDate(dateKey);
@@ -72,23 +73,28 @@ export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: 
   const overlayOpacity = useSharedValue(0);
   const panelY = useSharedValue(1);
 
+  const resetForm = useCallback(() => {
+    setAmount('');
+    setCurrency('CNY');
+    setCategory('餐饮');
+    setNotes('');
+    setEditingId(null);
+  }, []);
+
   useEffect(() => {
     if (visible) {
       setShouldRender(true);
       overlayOpacity.value = withTiming(1, { duration: PANEL_DURATION });
       panelY.value = withTiming(0, { duration: PANEL_DURATION });
-      // 重置表单
-      setAmount('');
-      setCurrency('CNY');
-      setCategory('餐饮');
-      setNotes('');
+      resetForm();
     } else {
       overlayOpacity.value = withTiming(0, { duration: PANEL_DURATION });
       panelY.value = withTiming(1, { duration: PANEL_DURATION });
+      setEditingId(null);
       const timer = setTimeout(() => setShouldRender(false), PANEL_DURATION);
       return () => clearTimeout(timer);
     }
-  }, [visible, overlayOpacity, panelY]);
+  }, [visible, overlayOpacity, panelY, resetForm]);
 
   const overlayStyle = useAnimatedStyle(() => ({
     opacity: overlayOpacity.value,
@@ -98,20 +104,42 @@ export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: 
     transform: [{ translateY: panelY.value * 400 }],
   }));
 
-  const handleAdd = useCallback(() => {
+  const handleStartEdit = useCallback((id: string, item: { amount: number; currency: Currency; category: ExpenseCategory; notes: string }) => {
+    setEditingId(id);
+    setAmount(String(item.amount));
+    setCurrency(item.currency);
+    setCategory(item.category);
+    setNotes(item.notes);
+    amountRef.current?.focus();
+  }, []);
+
+  const handleCancelEdit = useCallback(() => {
+    resetForm();
+    Keyboard.dismiss();
+  }, [resetForm]);
+
+  const handleSave = useCallback(() => {
     const num = parseFloat(amount);
     if (isNaN(num) || num <= 0) return;
-    addExpense(dateKey, {
-      amount: num,
-      currency,
-      category,
-      notes: notes.trim(),
-      tripId: activeTrip?.id ?? null,
-    });
-    setAmount('');
-    setNotes('');
+    if (editingId) {
+      updateExpense(dateKey, editingId, {
+        amount: num,
+        currency,
+        category,
+        notes: notes.trim(),
+      });
+    } else {
+      addExpense(dateKey, {
+        amount: num,
+        currency,
+        category,
+        notes: notes.trim(),
+        tripId: activeTrip?.id ?? null,
+      });
+    }
+    resetForm();
     Keyboard.dismiss();
-  }, [amount, currency, category, notes, addExpense, dateKey, activeTrip]);
+  }, [amount, currency, category, notes, editingId, addExpense, updateExpense, dateKey, activeTrip, resetForm]);
 
   const tint = useThemeColor({}, 'tint');
   const textColor = useThemeColor({}, 'text');
@@ -223,7 +251,14 @@ export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: 
             </ThemedText>
           }
           renderItem={({ item }) => (
-            <View style={[styles.recordItem, { borderBottomColor: borderColor }]}>
+            <TouchableOpacity
+              activeOpacity={0.6}
+              style={[
+                styles.recordItem,
+                { borderBottomColor: borderColor },
+                editingId === item.id && [styles.recordItemActive, { backgroundColor: tint + '10' }],
+              ]}
+              onPress={() => handleStartEdit(item.id, item)}>
               <View style={styles.recordLeft}>
                 <View style={[styles.categoryDot, { backgroundColor: getCategoryColor(item.category) }]} />
                 <View style={styles.recordInfo}>
@@ -246,12 +281,22 @@ export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: 
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <ThemedText style={[styles.deleteBtn, { color: dangerColor }]}>×</ThemedText>
               </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
           )}
         />
 
-        {/* 添加费用表单 */}
+        {/* 费用表单 */}
         <View style={[styles.formArea, { borderTopColor: borderColor }]}>
+          {/* 编辑模式标签 */}
+          {editingId && (
+            <View style={styles.editHeader}>
+              <ThemedText style={[styles.editLabel, { color: tint }]}>编辑费用</ThemedText>
+              <TouchableOpacity onPress={handleCancelEdit} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <ThemedText style={[styles.cancelText, { color: mutedColor }]}>取消</ThemedText>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* 币种选择 */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.currencyRow}>
             {CURRENCIES.map((c) => (
@@ -313,14 +358,14 @@ export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: 
               value={notes}
               onChangeText={setNotes}
               returnKeyType="done"
-              onSubmitEditing={handleAdd}
+              onSubmitEditing={handleSave}
               maxLength={100}
             />
             <TouchableOpacity
               style={[styles.addBtn, { backgroundColor: tint }, !canAdd && styles.addBtnDisabled]}
-              onPress={handleAdd}
+              onPress={handleSave}
               disabled={!canAdd}>
-              <ThemedText style={styles.addBtnText}>+</ThemedText>
+              <ThemedText style={styles.addBtnText}>{editingId ? '✓' : '+'}</ThemedText>
             </TouchableOpacity>
           </View>
         </View>
@@ -447,6 +492,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: 8,
   },
+  recordItemActive: {
+    borderRadius: 8,
+    borderBottomWidth: 0,
+    marginVertical: 2,
+    paddingHorizontal: 4,
+  },
   recordLeft: {
     flex: 1,
     flexDirection: 'row',
@@ -477,6 +528,20 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '300',
     marginLeft: 8,
+  },
+  editHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  editLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  cancelText: {
+    fontSize: 13,
+    fontWeight: '500',
   },
   formArea: {
     borderTopWidth: StyleSheet.hairlineWidth,
