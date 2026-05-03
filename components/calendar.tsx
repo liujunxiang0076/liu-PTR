@@ -55,6 +55,7 @@ type Props = {
   onDayPress: (dateKey: string, year: number, month: number, day: number) => void;
   hasRecords: (dateKey: string) => boolean;
   getDailyTotal: (dateKey: string) => number;
+  getDayBudget: (year: number, month: number, day: number) => { amount: number };
   onSettingsPress?: () => void;
   onBackupPress?: () => void;
   onSearchPress?: () => void;
@@ -128,6 +129,7 @@ function computeAdjacent(y: number, m: number, dir: number) {
 function DayCellView({
   cell,
   dailyTotal,
+  budgetAmount,
   tint,
   mutedColor,
   holidayColor,
@@ -136,6 +138,7 @@ function DayCellView({
 }: {
   cell: DayCell;
   dailyTotal: number;
+  budgetAmount: number;
   tint: string;
   mutedColor: string;
   holidayColor: string;
@@ -148,6 +151,8 @@ function DayCellView({
 
   const hasExpense = dailyTotal > 0;
   const showAmount = hasExpense && !cell.holiday;
+  const overBudget = budgetAmount > 0 && dailyTotal > budgetAmount;
+  const amountColor = overBudget ? SemanticColors.danger : tint;
 
   return (
     <TouchableOpacity style={styles.weekCell} activeOpacity={0.6} onPress={onPress}>
@@ -171,6 +176,11 @@ function DayCellView({
             <ThemedText style={styles.restBadgeText}>{cell.restDayBadge}</ThemedText>
           </View>
         )}
+        {overBudget && cell.currentMonth && (
+          <View style={styles.overBudgetBadge}>
+            <ThemedText style={styles.overBudgetBadgeText}>!</ThemedText>
+          </View>
+        )}
       </View>
       {cell.holiday && (
         <ThemedText
@@ -181,7 +191,7 @@ function DayCellView({
       )}
       {showAmount && (
         <ThemedText
-          style={[styles.amountText, { color: cell.currentMonth ? tint : mutedColor }]}
+          style={[styles.amountText, { color: cell.currentMonth ? amountColor : mutedColor }]}
           numberOfLines={1}>
           {compactAmount(dailyTotal)}
         </ThemedText>
@@ -189,7 +199,7 @@ function DayCellView({
       {/* 节假日+费用同时存在时：显示紧凑金额 */}
       {cell.holiday && hasExpense && (
         <ThemedText
-          style={[styles.amountText, { color: cell.currentMonth ? tint : mutedColor }]}
+          style={[styles.amountText, { color: cell.currentMonth ? amountColor : mutedColor }]}
           numberOfLines={1}>
           {compactAmount(dailyTotal)}
         </ThemedText>
@@ -204,11 +214,13 @@ function MonthGrid({
   grid,
   onDayPress,
   getDailyTotal,
+  getDayBudget,
   colors,
 }: {
   grid: DayCell[][];
   onDayPress: Props['onDayPress'];
   getDailyTotal: Props['getDailyTotal'];
+  getDayBudget: Props['getDayBudget'];
   colors: { tint: string; muted: string; holiday: string; weekend: string };
 }) {
   return (
@@ -220,6 +232,7 @@ function MonthGrid({
               key={ci}
               cell={cell}
               dailyTotal={cell.currentMonth ? getDailyTotal(cell.dateKey) : 0}
+              budgetAmount={cell.currentMonth ? getDayBudget(cell.year, cell.month, cell.day).amount : 0}
               tint={colors.tint}
               mutedColor={colors.muted}
               holidayColor={colors.holiday}
@@ -235,7 +248,7 @@ function MonthGrid({
 
 // ———————————————————— 主组件 ————————————————————
 
-export function Calendar({ onDayPress, hasRecords, getDailyTotal, onSettingsPress, onBackupPress, onSearchPress }: Props) {
+export function Calendar({ onDayPress, hasRecords, getDailyTotal, getDayBudget, onSettingsPress, onBackupPress, onSearchPress }: Props) {
   const today = useMemo(() => new Date(), []);
 
   // 月份状态 + 网格数据合为一个 state，保证原子更新
@@ -497,13 +510,13 @@ export function Calendar({ onDayPress, hasRecords, getDailyTotal, onSettingsPres
         <View style={styles.gestureArea}>
           <Animated.View style={[styles.track, { width: width * 3 }, trackStyle]}>
             <View style={{ width }}>
-              <MonthGrid grid={d.prevGrid} onDayPress={onDayPress} getDailyTotal={getDailyTotal} colors={colors} />
+              <MonthGrid grid={d.prevGrid} onDayPress={onDayPress} getDailyTotal={getDailyTotal} getDayBudget={getDayBudget} colors={colors} />
             </View>
             <View style={{ width }}>
-              <MonthGrid grid={d.currGrid} onDayPress={onDayPress} getDailyTotal={getDailyTotal} colors={colors} />
+              <MonthGrid grid={d.currGrid} onDayPress={onDayPress} getDailyTotal={getDailyTotal} getDayBudget={getDayBudget} colors={colors} />
             </View>
             <View style={{ width }}>
-              <MonthGrid grid={d.nextGrid} onDayPress={onDayPress} getDailyTotal={getDailyTotal} colors={colors} />
+              <MonthGrid grid={d.nextGrid} onDayPress={onDayPress} getDailyTotal={getDailyTotal} getDayBudget={getDayBudget} colors={colors} />
             </View>
           </Animated.View>
         </View>
@@ -591,6 +604,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   restBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#fff',
+    lineHeight: 12,
+  },
+  overBudgetBadge: {
+    position: 'absolute',
+    top: -3,
+    left: -7,
+    borderRadius: 6,
+    width: 14,
+    height: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: SemanticColors.danger,
+  },
+  overBudgetBadgeText: {
     fontSize: 9,
     fontWeight: '700',
     color: '#fff',

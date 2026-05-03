@@ -21,7 +21,7 @@ export default function HomeScreen() {
   const [backupVisible, setBackupVisible] = useState(false);
   const [searchVisible, setSearchVisible] = useState(false);
 
-  const { hasRecords, getDailyTotal } = useAppContext();
+  const { hasRecords, getDailyTotal, getDayBudget } = useAppContext();
 
   const handleDayPress = useCallback(
     (dateKey: string, year: number, month: number, day: number) => {
@@ -40,6 +40,7 @@ export default function HomeScreen() {
         onDayPress={handleDayPress}
         hasRecords={hasRecords}
         getDailyTotal={getDailyTotal}
+        getDayBudget={getDayBudget}
         onSettingsPress={() => setSettingsVisible(true)}
         onBackupPress={() => setBackupVisible(true)}
         onSearchPress={() => setSearchVisible(true)}
