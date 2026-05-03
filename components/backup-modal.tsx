@@ -34,7 +34,7 @@ export function BackupModal({ visible, onClose }: Props) {
   const { importAllData } = useAppContext();
   const [busy, setBusy] = useState(false);
 
-  const { tint, muted: mutedColor, border: borderColor, panelBg, danger: dangerColor } = useAppColors();
+  const { tint, muted: mutedColor, border: borderColor, panelBg } = useAppColors();
 
   const handleExport = useCallback(async () => {
     try {

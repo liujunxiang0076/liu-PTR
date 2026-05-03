@@ -1,5 +1,5 @@
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useLocalSearchParams, Stack } from 'expo-router';
+import { FlatList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -11,7 +11,6 @@ import { CATEGORIES, type ExpenseItem } from '@/types/expense';
 export default function TripDetailScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const { getTripById, getByTrip, rates } = useAppContext();
-  const router = useRouter();
 
   const { tint, text: textColor, muted: mutedColor, border: borderColor, panelBg } = useAppColors();
 

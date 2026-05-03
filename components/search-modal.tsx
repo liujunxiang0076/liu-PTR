@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState } from 'react';
 import {
   FlatList,
   Modal,
-  Pressable,
   ScrollView,
   StyleSheet,
   TextInput,

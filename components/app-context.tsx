@@ -52,12 +52,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const removeTrip = useCallback((id: string) => {
     trips.remove(id);
     expenses.removeByTrip(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- trips 和 expenses 的函数引用已由各自 hook 稳定化
   }, [trips.remove, expenses.removeByTrip]);
 
   const importAllData = useCallback((data: { expenses: ExpensesMap; trips: Record<string, Trip>; budget: DailyBudget }) => {
     expenses.importAll(data.expenses);
     trips.importAll(data.trips);
     budget.importAll(data.budget);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 同上
   }, [expenses.importAll, trips.importAll, budget.importAll]);
 
   const value: AppContextType = useMemo(() => ({

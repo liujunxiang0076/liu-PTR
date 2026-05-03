@@ -45,7 +45,7 @@ const WEEKDAY_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五
 const PANEL_DURATION = 280;
 
 export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: Props) {
-  const { getByDate, addExpense, updateExpense, removeExpense, getDailyTotal, getActiveTrip, convert, getDayBudget } = useAppContext();
+  const { getByDate, addExpense, updateExpense, removeExpense, getDailyTotal, getActiveTrip, getDayBudget } = useAppContext();
 
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState<Currency>('CNY');
