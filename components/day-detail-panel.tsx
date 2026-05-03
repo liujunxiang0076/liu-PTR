@@ -20,7 +20,7 @@ import Animated, {
 
 import { useAppContext } from '@/components/app-context';
 import { getHoliday, getRestDayBadge } from '@/constants/holidays';
-import { formatAmount, getCategoryColor } from '@/constants/currency';
+import { formatAmount, getCategoryColor, computeBudgetProgress } from '@/constants/currency';
 import { useAppColors } from '@/hooks/use-app-colors';
 import { SemanticColors } from '@/constants/theme';
 import { ThemedText } from './themed-text';
@@ -28,7 +28,6 @@ import {
   type Currency,
   type ExpenseCategory,
   CATEGORIES,
-  CATEGORY_ICONS,
   CURRENCIES,
   CURRENCY_SYMBOLS,
 } from '@/types/expense';
@@ -64,11 +63,8 @@ export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: 
   const weekday = WEEKDAY_NAMES[date.getDay()];
   const activeTrip = getActiveTrip(dateKey);
   const dayBudget = getDayBudget(year, month, day);
-  const budgetPct = dayBudget.amount > 0 ? Math.min((dailyTotal / dayBudget.amount) * 100, 100) : 0;
-  const budgetOver = dayBudget.amount > 0 && dailyTotal > dayBudget.amount;
-  const budgetColor = budgetOver
-    ? SemanticColors.danger
-    : budgetPct > 70 ? SemanticColors.warning : SemanticColors.success;
+  const { rawPct: budgetRawPct, pct: budgetPct, barColor: budgetColor } = computeBudgetProgress(dailyTotal, dayBudget.amount);
+  const budgetOver = budgetRawPct > 100;
 
   const overlayOpacity = useSharedValue(0);
   const panelY = useSharedValue(1);

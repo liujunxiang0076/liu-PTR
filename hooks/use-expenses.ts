@@ -11,6 +11,8 @@ export function useExpenses() {
   const [expenses, setExpenses] = useState<ExpensesMap>({});
   const [loaded, setLoaded] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestExpenses = useRef(expenses);
+  latestExpenses.current = expenses;
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
@@ -32,7 +34,12 @@ export function useExpenses() {
         AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
       }, SAVE_DELAY);
     }
-    return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
+    return () => {
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(latestExpenses.current));
+      }
+    };
   }, [expenses, loaded]);
 
   const getByDate = useCallback((dateKey: string) => expenses[dateKey] ?? [], [expenses]);

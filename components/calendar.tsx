@@ -53,7 +53,6 @@ type DayCell = {
 
 type Props = {
   onDayPress: (dateKey: string, year: number, month: number, day: number) => void;
-  hasRecords: (dateKey: string) => boolean;
   getDailyTotal: (dateKey: string) => number;
   getDayBudget: (year: number, month: number, day: number) => { amount: number };
   onSettingsPress?: () => void;
@@ -248,7 +247,7 @@ function MonthGrid({
 
 // ———————————————————— 主组件 ————————————————————
 
-export function Calendar({ onDayPress, hasRecords, getDailyTotal, getDayBudget, onSettingsPress, onBackupPress, onSearchPress }: Props) {
+export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPress, onBackupPress, onSearchPress }: Props) {
   const today = useMemo(() => new Date(), []);
 
   // 月份状态 + 网格数据合为一个 state，保证原子更新

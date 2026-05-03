@@ -5,8 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { useAppContext } from '@/components/app-context';
 import { useAppColors } from '@/hooks/use-app-colors';
-import { formatAmount, getCategoryColor, sumExpensesInCNY } from '@/constants/currency';
-import { SemanticColors } from '@/constants/theme';
+import { formatAmount, getCategoryColor, sumExpensesInCNY, computeBudgetProgress, computeCategoryTotals } from '@/constants/currency';
 import { CATEGORIES, type ExpenseItem } from '@/types/expense';
 
 export default function TripDetailScreen() {
@@ -28,16 +27,8 @@ export default function TripDetailScreen() {
   }
 
   const totalCNY = sumExpensesInCNY(expenses, rates);
-  const rawPct = trip.budget > 0 ? (totalCNY / trip.budget) * 100 : 0;
-  const pct = Math.min(rawPct, 100);
-  const barColor = rawPct > 100 ? SemanticColors.danger : rawPct > 70 ? SemanticColors.warning : SemanticColors.success;
-
-  // 按分类统计
-  const categoryTotals: Record<string, number> = {};
-  for (const cat of CATEGORIES) categoryTotals[cat] = 0;
-  for (const e of expenses) {
-    categoryTotals[e.category] = (categoryTotals[e.category] ?? 0) + sumExpensesInCNY([e], rates);
-  }
+  const { rawPct, pct, barColor } = computeBudgetProgress(totalCNY, trip.budget);
+  const categoryTotals = computeCategoryTotals(expenses, rates);
   const maxCatTotal = Math.max(...Object.values(categoryTotals), 1);
 
   // 按日期分组

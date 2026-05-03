@@ -39,7 +39,7 @@ export function BudgetSettingsModal({ visible, onClose }: Props) {
 
   const sanitizeBudget = useCallback((raw: string): number => {
     const n = parseFloat(raw);
-    if (isNaN(n) || n < 0) return 0;
+    if (!isFinite(n) || n < 0) return 0;
     return Math.round(n * 100) / 100;
   }, []);
 

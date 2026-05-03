@@ -11,6 +11,8 @@ export function useTrips() {
   const [trips, setTrips] = useState<Record<string, Trip>>({});
   const [loaded, setLoaded] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestTrips = useRef(trips);
+  latestTrips.current = trips;
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
@@ -32,7 +34,12 @@ export function useTrips() {
         AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(trips));
       }, SAVE_DELAY);
     }
-    return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
+    return () => {
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(latestTrips.current));
+      }
+    };
   }, [trips, loaded]);
 
   const add = useCallback((trip: Omit<Trip, 'id' | 'createdAt'>) => {
@@ -70,9 +77,12 @@ export function useTrips() {
 
   const getTripsInMonth = useCallback(
     (year: number, month: number) => {
-      const prefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+      const mm = String(month + 1).padStart(2, '0');
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const monthStart = `${year}-${mm}-01`;
+      const monthEnd = `${year}-${mm}-${daysInMonth}`;
       return Object.values(trips).filter(
-        (t) => t.startDate.slice(0, 7) === prefix || t.endDate.slice(0, 7) === prefix
+        (t) => t.startDate <= monthEnd && t.endDate >= monthStart
       );
     },
     [trips]

@@ -22,7 +22,7 @@ export default function HomeScreen() {
   const [backupVisible, setBackupVisible] = useState(false);
   const [searchVisible, setSearchVisible] = useState(false);
 
-  const { hasRecords, getDailyTotal, getDayBudget } = useAppContext();
+  const { getDailyTotal, getDayBudget } = useAppContext();
   useHolidaySync();
 
   const handleDayPress = useCallback(
@@ -40,7 +40,6 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <Calendar
         onDayPress={handleDayPress}
-        hasRecords={hasRecords}
         getDailyTotal={getDailyTotal}
         getDayBudget={getDayBudget}
         onSettingsPress={() => setSettingsVisible(true)}

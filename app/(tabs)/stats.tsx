@@ -9,7 +9,7 @@ import { useAppColors } from '@/hooks/use-app-colors';
 import { CATEGORIES } from '@/types/expense';
 import {
   getCategoryColor,
-  sumExpensesInCNY,
+  computeCategoryTotals,
 } from '@/constants/currency';
 import { generateCSV } from '@/utils/csv-export';
 
@@ -32,14 +32,10 @@ export default function StatsScreen() {
   const monthExpenses = useMemo(() => getMonthExpenses(year, month), [year, month, getMonthExpenses]);
   const monthTrips = useMemo(() => getTripsInMonth(year, month), [year, month, getTripsInMonth]);
 
-  const categoryTotals = useMemo(() => {
-    const totals: Record<string, number> = {};
-    for (const cat of CATEGORIES) totals[cat] = 0;
-    for (const e of monthExpenses) {
-      totals[e.category] = (totals[e.category] ?? 0) + sumExpensesInCNY([e], rates);
-    }
-    return totals;
-  }, [monthExpenses, rates]);
+  const categoryTotals = useMemo(
+    () => computeCategoryTotals(monthExpenses, rates),
+    [monthExpenses, rates]
+  );
   const maxCatTotal = Math.max(...Object.values(categoryTotals), 1);
 
   const dailyTotals = useMemo(() => {
@@ -73,15 +69,11 @@ export default function StatsScreen() {
   const maxMonthly = Math.max(...monthlyTotals, 1);
 
   const yearCategoryTotals = useMemo(() => {
-    const totals: Record<string, number> = {};
-    for (const cat of CATEGORIES) totals[cat] = 0;
+    const allYearExpenses = [];
     for (let m = 0; m < 12; m++) {
-      const expenses = getMonthExpenses(year, m);
-      for (const e of expenses) {
-        totals[e.category] = (totals[e.category] ?? 0) + sumExpensesInCNY([e], rates);
-      }
+      allYearExpenses.push(...getMonthExpenses(year, m));
     }
-    return totals;
+    return computeCategoryTotals(allYearExpenses, rates);
   }, [year, getMonthExpenses, rates]);
   const maxYearCatTotal = Math.max(...Object.values(yearCategoryTotals), 1);
 

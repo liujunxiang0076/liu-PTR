@@ -41,15 +41,6 @@ export const CURRENCIES: Currency[] = ['CNY', 'USD', 'EUR', 'JPY', 'GBP'];
 
 export const CATEGORIES: ExpenseCategory[] = ['交通', '住宿', '餐饮', '通讯', '办公', '其他'];
 
-export const CATEGORY_ICONS: Record<ExpenseCategory, string> = {
-  '交通': 'car.fill',
-  '住宿': 'bed.double.fill',
-  '餐饮': 'fork.knife',
-  '通讯': 'phone.fill',
-  '办公': 'doc.text.fill',
-  '其他': 'ellipsis.circle.fill',
-};
-
 /** 分类颜色 */
 export const CATEGORY_COLORS: Record<ExpenseCategory, string> = {
   '交通': '#4A90D9',

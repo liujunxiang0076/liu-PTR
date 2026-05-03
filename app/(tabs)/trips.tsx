@@ -7,8 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { TripFormModal } from '@/components/trip-form-modal';
 import { useAppContext } from '@/components/app-context';
 import { useAppColors } from '@/hooks/use-app-colors';
-import { sumExpensesInCNY } from '@/constants/currency';
-import { SemanticColors } from '@/constants/theme';
+import { sumExpensesInCNY, computeBudgetProgress } from '@/constants/currency';
 
 export default function TripsScreen() {
   const { trips, getByTrip, removeTrip, rates } = useAppContext();
@@ -63,9 +62,7 @@ export default function TripsScreen() {
         renderItem={({ item }) => {
           const expenses = getByTrip(item.id);
           const spent = sumExpensesInCNY(expenses, rates);
-          const rawPct = item.budget > 0 ? (spent / item.budget) * 100 : 0;
-          const pct = Math.min(rawPct, 100);
-          const barColor = rawPct > 100 ? SemanticColors.danger : rawPct > 70 ? SemanticColors.warning : SemanticColors.success;
+          const { rawPct, pct, barColor } = computeBudgetProgress(spent, item.budget);
 
           return (
             <TouchableOpacity

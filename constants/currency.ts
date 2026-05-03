@@ -4,6 +4,7 @@ import {
   type ExpenseCategory,
   type ExpenseItem,
   CURRENCY_SYMBOLS,
+  CATEGORIES,
   CATEGORY_COLORS,
 } from '@/types/expense';
 
@@ -53,4 +54,33 @@ export function uid() {
 /** 计算一组费用的 CNY 总额 */
 export function sumExpensesInCNY(expenses: ExpenseItem[], rates: Record<Currency, number>): number {
   return expenses.reduce((sum, e) => sum + convertToCNY(e.amount, e.currency, rates), 0);
+}
+
+/** 预算进度颜色阈值 */
+export const BUDGET_WARN_THRESHOLD = 70;
+export const BUDGET_DANGER_THRESHOLD = 100;
+
+/** 计算预算进度条数据 */
+export function computeBudgetProgress(spent: number, budget: number) {
+  const rawPct = budget > 0 ? (spent / budget) * 100 : 0;
+  const pct = Math.min(rawPct, 100);
+  const barColor = rawPct > BUDGET_DANGER_THRESHOLD
+    ? '#E85D5D'
+    : rawPct > BUDGET_WARN_THRESHOLD
+      ? '#F5A623'
+      : '#7ED321';
+  return { rawPct, pct, barColor };
+}
+
+/** 按分类汇总费用（CNY） */
+export function computeCategoryTotals(
+  expenses: ExpenseItem[],
+  rates: Record<Currency, number>,
+): Record<string, number> {
+  const totals: Record<string, number> = {};
+  for (const cat of CATEGORIES) totals[cat] = 0;
+  for (const e of expenses) {
+    totals[e.category] = (totals[e.category] ?? 0) + convertToCNY(e.amount, e.currency, rates);
+  }
+  return totals;
 }

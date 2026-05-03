@@ -12,8 +12,8 @@ import * as Clipboard from 'expo-clipboard';
 
 import { ThemedText } from '@/components/themed-text';
 import { useAppContext } from '@/components/app-context';
-import { useThemeColor } from '@/hooks/use-theme-color';
-import { SemanticColors } from '@/constants/theme';
+import { useAppColors } from '@/hooks/use-app-colors';
+import { type ExpensesMap, type Trip, type DailyBudget } from '@/types/expense';
 
 type Props = {
   visible: boolean;
@@ -25,20 +25,16 @@ const BACKUP_VERSION = 1;
 type BackupData = {
   version: number;
   createdAt: string;
-  expenses: Record<string, unknown>;
-  trips: Record<string, unknown>;
-  budget: { workday: number; weekend: number; holiday: number };
+  expenses: ExpensesMap;
+  trips: Record<string, Trip>;
+  budget: DailyBudget;
 };
 
 export function BackupModal({ visible, onClose }: Props) {
   const { importAllData } = useAppContext();
   const [busy, setBusy] = useState(false);
 
-  const tint = useThemeColor({}, 'tint');
-  const mutedColor = useThemeColor({ light: SemanticColors.muted.light, dark: SemanticColors.muted.dark }, 'icon');
-  const borderColor = useThemeColor({ light: SemanticColors.border.light, dark: SemanticColors.border.dark }, 'icon');
-  const panelBg = useThemeColor({ light: SemanticColors.panelBg.light, dark: SemanticColors.panelBg.dark }, 'background');
-  const dangerColor = useThemeColor({ light: SemanticColors.danger, dark: SemanticColors.dangerDark }, 'tint');
+  const { tint, muted: mutedColor, border: borderColor, panelBg, danger: dangerColor } = useAppColors();
 
   const handleExport = useCallback(async () => {
     try {
@@ -102,7 +98,7 @@ export function BackupModal({ visible, onClose }: Props) {
                 expenses: data.expenses,
                 trips: data.trips,
                 budget: data.budget,
-              } as Parameters<typeof importAllData>[0]);
+              });
               Alert.alert('恢复成功', '数据已恢复，部分更改可能需要重启后生效');
               onClose();
             },
