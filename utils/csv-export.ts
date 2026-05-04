@@ -1,5 +1,4 @@
 import { type ExpenseItem, type Trip } from '@/types/expense';
-import { formatAmount } from '@/constants/currency';
 
 /** 生成 CSV 文本（含 UTF-8 BOM 以兼容 Excel 中文显示） */
 export function generateCSV(expenses: ExpenseItem[], trips: Record<string, Trip>): string {

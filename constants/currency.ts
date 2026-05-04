@@ -1,6 +1,5 @@
 import {
   type Currency,
-  type ExchangeRates,
   type ExpenseCategory,
   type ExpenseItem,
   CURRENCY_SYMBOLS,
