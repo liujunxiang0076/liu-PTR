@@ -6,6 +6,128 @@ import { useTrips } from '@/hooks/use-trips';
 import { useExchangeRates } from '@/hooks/use-exchange-rates';
 import { useBudget } from '@/hooks/use-budget';
 
+// ── 费用 Context ──────────────────────────────────────────────
+type ExpensesContextType = {
+  getByDate: (dateKey: string) => ExpenseItem[];
+  addExpense: (dateKey: string, item: Omit<ExpenseItem, 'id' | 'createdAt' | 'dateKey'>) => void;
+  updateExpense: (dateKey: string, id: string, updates: Partial<ExpenseItem>) => void;
+  removeExpense: (dateKey: string, id: string) => void;
+  removeByTrip: (tripId: string) => void;
+  hasRecords: (dateKey: string) => boolean;
+  getDailyTotal: (dateKey: string, rates: Record<Currency, number>) => number;
+  getByTrip: (tripId: string) => ExpenseItem[];
+  getByDateRange: (startDate: string, endDate: string) => ExpenseItem[];
+  getMonthlyTotal: (year: number, month: number, rates: Record<Currency, number>) => { total: number; count: number };
+  getMonthExpenses: (year: number, month: number) => ExpenseItem[];
+  searchExpenses: (query: string, category: ExpenseCategory | null) => { dateKey: string; item: ExpenseItem }[];
+  importAll: (data: ExpensesMap) => void;
+  loaded: boolean;
+};
+
+const ExpensesContext = createContext<ExpensesContextType | null>(null);
+
+function ExpensesProvider({ children }: { children: React.ReactNode }) {
+  const hook = useExpenses();
+  const value: ExpensesContextType = useMemo(() => ({
+    getByDate: hook.getByDate,
+    addExpense: hook.add,
+    updateExpense: hook.update,
+    removeExpense: hook.remove,
+    removeByTrip: hook.removeByTrip,
+    hasRecords: hook.hasRecords,
+    getDailyTotal: hook.getDailyTotal,
+    getByTrip: hook.getByTrip,
+    getByDateRange: hook.getByDateRange,
+    getMonthlyTotal: hook.getMonthlyTotal,
+    getMonthExpenses: hook.getMonthExpenses,
+    searchExpenses: hook.search,
+    importAll: hook.importAll,
+    loaded: hook.loaded,
+  }), [hook]);
+  return <ExpensesContext.Provider value={value}>{children}</ExpensesContext.Provider>;
+}
+
+export function useExpensesContext() {
+  const ctx = useContext(ExpensesContext);
+  if (!ctx) throw new Error('useExpensesContext must be used within AppProvider');
+  return ctx;
+}
+
+// ── 行程 + 汇率 Context ──────────────────────────────────────
+type TripsContextType = {
+  trips: Trip[];
+  addTrip: (trip: Omit<Trip, 'id' | 'createdAt'>) => string;
+  updateTrip: (id: string, updates: Partial<Trip>) => void;
+  removeTrip: (id: string) => void;
+  getTripById: (id: string) => Trip | null;
+  getActiveTrip: (dateKey: string) => Trip | null;
+  getTripsInMonth: (year: number, month: number) => Trip[];
+  importAll: (data: Record<string, Trip>) => void;
+  loaded: boolean;
+  convert: (amount: number, from: Currency) => number;
+  rates: Record<Currency, number>;
+};
+
+const TripsContext = createContext<TripsContextType | null>(null);
+
+function TripsProvider({ children }: { children: React.ReactNode }) {
+  const tripsHook = useTrips();
+  const exchangeRates = useExchangeRates();
+  const rates = exchangeRates.rates.rates;
+
+  const value = useMemo(() => ({
+    trips: tripsHook.getAll(),
+    addTrip: tripsHook.add,
+    updateTrip: tripsHook.update,
+    removeTrip: tripsHook.remove,
+    getTripById: tripsHook.getById,
+    getActiveTrip: tripsHook.getActiveTrip,
+    getTripsInMonth: tripsHook.getTripsInMonth,
+    importAll: tripsHook.importAll,
+    loaded: tripsHook.loaded,
+    convert: exchangeRates.convert,
+    rates,
+  }), [tripsHook, exchangeRates, rates]);
+
+  return <TripsContext.Provider value={value}>{children}</TripsContext.Provider>;
+}
+
+export function useTripsContext() {
+  const ctx = useContext(TripsContext);
+  if (!ctx) throw new Error('useTripsContext must be used within AppProvider');
+  return ctx;
+}
+
+// ── 预算 Context ──────────────────────────────────────────────
+type BudgetContextType = {
+  budget: DailyBudget;
+  updateBudget: (updates: Partial<DailyBudget>) => void;
+  getDayBudget: (year: number, month: number, day: number) => { type: 'workday' | 'weekend' | 'holiday'; amount: number };
+  importAll: (data: DailyBudget) => void;
+  loaded: boolean;
+};
+
+const BudgetContext = createContext<BudgetContextType | null>(null);
+
+function BudgetProvider({ children }: { children: React.ReactNode }) {
+  const hook = useBudget();
+  const value: BudgetContextType = useMemo(() => ({
+    budget: hook.budget,
+    updateBudget: hook.update,
+    getDayBudget: hook.getDayBudget,
+    importAll: hook.importAll,
+    loaded: hook.loaded,
+  }), [hook]);
+  return <BudgetContext.Provider value={value}>{children}</BudgetContext.Provider>;
+}
+
+export function useBudgetContext() {
+  const ctx = useContext(BudgetContext);
+  if (!ctx) throw new Error('useBudgetContext must be used within AppProvider');
+  return ctx;
+}
+
+// ── 组合 Provider（兼容旧 API） ──────────────────────────────
 type AppContextType = {
   // 费用
   getByDate: (dateKey: string) => ExpenseItem[];
@@ -41,56 +163,63 @@ type AppContextType = {
 
 const AppContext = createContext<AppContextType | null>(null);
 
-export function AppProvider({ children }: { children: React.ReactNode }) {
-  const expenses = useExpenses();
-  const trips = useTrips();
-  const exchangeRates = useExchangeRates();
-  const budget = useBudget();
-
-  const rates = exchangeRates.rates.rates;
+function AppBridge({ children }: { children: React.ReactNode }) {
+  const expenses = useExpensesContext();
+  const tripsCtx = useTripsContext();
+  const budgetCtx = useBudgetContext();
 
   const removeTrip = useCallback((id: string) => {
-    trips.remove(id);
+    tripsCtx.removeTrip(id);
     expenses.removeByTrip(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- trips 和 expenses 的函数引用已由各自 hook 稳定化
-  }, [trips.remove, expenses.removeByTrip]);
+  }, [tripsCtx.removeTrip, expenses.removeByTrip]);
 
   const importAllData = useCallback((data: { expenses: ExpensesMap; trips: Record<string, Trip>; budget: DailyBudget }) => {
     expenses.importAll(data.expenses);
-    trips.importAll(data.trips);
-    budget.importAll(data.budget);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 同上
-  }, [expenses.importAll, trips.importAll, budget.importAll]);
+    tripsCtx.importAll(data.trips);
+    budgetCtx.importAll(data.budget);
+  }, [expenses.importAll, tripsCtx.importAll, budgetCtx.importAll]);
 
   const value: AppContextType = useMemo(() => ({
     getByDate: expenses.getByDate,
-    addExpense: expenses.add,
-    updateExpense: expenses.update,
-    removeExpense: expenses.remove,
+    addExpense: expenses.addExpense,
+    updateExpense: expenses.updateExpense,
+    removeExpense: expenses.removeExpense,
     hasRecords: expenses.hasRecords,
-    getDailyTotal: (dateKey: string) => expenses.getDailyTotal(dateKey, rates),
+    getDailyTotal: (dateKey: string) => expenses.getDailyTotal(dateKey, tripsCtx.rates),
     getByTrip: expenses.getByTrip,
     getByDateRange: expenses.getByDateRange,
-    getMonthlyTotal: (year: number, month: number) => expenses.getMonthlyTotal(year, month, rates),
+    getMonthlyTotal: (year: number, month: number) => expenses.getMonthlyTotal(year, month, tripsCtx.rates),
     getMonthExpenses: expenses.getMonthExpenses,
-    searchExpenses: expenses.search,
-    trips: trips.getAll(),
-    addTrip: trips.add,
-    updateTrip: trips.update,
+    searchExpenses: expenses.searchExpenses,
+    trips: tripsCtx.trips,
+    addTrip: tripsCtx.addTrip,
+    updateTrip: tripsCtx.updateTrip,
     removeTrip,
-    getTripById: trips.getById,
-    getActiveTrip: trips.getActiveTrip,
-    getTripsInMonth: trips.getTripsInMonth,
-    convert: exchangeRates.convert,
-    rates,
-    budget: budget.budget,
-    updateBudget: budget.update,
-    getDayBudget: budget.getDayBudget,
+    getTripById: tripsCtx.getTripById,
+    getActiveTrip: tripsCtx.getActiveTrip,
+    getTripsInMonth: tripsCtx.getTripsInMonth,
+    convert: tripsCtx.convert,
+    rates: tripsCtx.rates,
+    budget: budgetCtx.budget,
+    updateBudget: budgetCtx.updateBudget,
+    getDayBudget: budgetCtx.getDayBudget,
     importAllData,
-    loaded: expenses.loaded && trips.loaded && budget.loaded,
-  }), [expenses, trips, exchangeRates, budget, rates, removeTrip, importAllData]);
+    loaded: expenses.loaded && tripsCtx.loaded && budgetCtx.loaded,
+  }), [expenses, tripsCtx, budgetCtx, removeTrip, importAllData]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+}
+
+export function AppProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <ExpensesProvider>
+      <TripsProvider>
+        <BudgetProvider>
+          <AppBridge>{children}</AppBridge>
+        </BudgetProvider>
+      </TripsProvider>
+    </ExpensesProvider>
+  );
 }
 
 export function useAppContext() {
