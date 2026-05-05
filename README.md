@@ -103,6 +103,10 @@ npx expo start
 | `npm run lint` | 运行 ESLint 检查 |
 | `npm test` | 运行 Jest 单元测试 |
 
+## 代码审查
+
+详见 [_review/](./_review/) 目录，包含优化建议和问题跟踪。
+
 ## 数据存储
 
 所有数据通过 AsyncStorage 本地持久化，使用防抖保存（300ms）减少 I/O 开销：
