@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -125,7 +125,7 @@ function computeAdjacent(y: number, m: number, dir: number) {
 
 // ———————————————————— 日期格子 ————————————————————
 
-function DayCellView({
+const DayCellView = React.memo(function DayCellView({
   cell,
   dailyTotal,
   budgetAmount,
@@ -205,7 +205,7 @@ function DayCellView({
       )}
     </TouchableOpacity>
   );
-}
+});
 
 // ———————————————————— 单月网格 ————————————————————
 

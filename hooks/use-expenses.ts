@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { type Currency, type ExpenseCategory, type ExpenseItem, type ExpensesMap } from '@/types/expense';
 import { convertToCNY, uid } from '@/constants/currency';
 
 const STORAGE_KEY = '@expenses:v1';
-const SAVE_DELAY = 300;
+const SAVE_DELAY = 500;
 
 export function useExpenses() {
   const [expenses, setExpenses] = useState<ExpensesMap>({});
@@ -41,6 +41,42 @@ export function useExpenses() {
       }
     };
   }, [expenses, loaded]);
+
+  // ── 按月索引：避免每次查询都遍历全部数据 ────────────────
+  const monthIndex = useMemo(() => {
+    const map = new Map<string, { dateKeys: string[]; items: ExpenseItem[] }>();
+    for (const [dateKey, list] of Object.entries(expenses)) {
+      const monthKey = dateKey.slice(0, 7); // "YYYY-MM"
+      let bucket = map.get(monthKey);
+      if (!bucket) {
+        bucket = { dateKeys: [], items: [] };
+        map.set(monthKey, bucket);
+      }
+      bucket.dateKeys.push(dateKey);
+      bucket.items.push(...list);
+    }
+    return map;
+  }, [expenses]);
+
+  // ── 按 tripId 索引 ──────────────────────────────────────
+  const tripIndex = useMemo(() => {
+    const map = new Map<string, ExpenseItem[]>();
+    for (const list of Object.values(expenses)) {
+      for (const item of list) {
+        if (!item.tripId) continue;
+        let bucket = map.get(item.tripId);
+        if (!bucket) {
+          bucket = [];
+          map.set(item.tripId, bucket);
+        }
+        bucket.push(item);
+      }
+    }
+    for (const bucket of map.values()) {
+      bucket.sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+    }
+    return map;
+  }, [expenses]);
 
   const getByDate = useCallback((dateKey: string) => expenses[dateKey] ?? [], [expenses]);
 
@@ -97,61 +133,49 @@ export function useExpenses() {
   );
 
   const getByTrip = useCallback(
-    (tripId: string) => {
-      const result: ExpenseItem[] = [];
-      for (const list of Object.values(expenses)) {
-        for (const item of list) {
-          if (item.tripId === tripId) result.push(item);
-        }
-      }
-      return result.sort((a, b) => a.dateKey.localeCompare(b.dateKey));
-    },
-    [expenses]
+    (tripId: string) => tripIndex.get(tripId) ?? [],
+    [tripIndex]
   );
 
   const getByDateRange = useCallback(
     (startDate: string, endDate: string) => {
+      const startMonth = startDate.slice(0, 7);
+      const endMonth = endDate.slice(0, 7);
       const result: ExpenseItem[] = [];
-      for (const [dateKey, list] of Object.entries(expenses)) {
-        if (dateKey >= startDate && dateKey <= endDate) {
-          result.push(...list);
+      for (const [monthKey, bucket] of monthIndex) {
+        if (monthKey < startMonth || monthKey > endMonth) continue;
+        for (const dateKey of bucket.dateKeys) {
+          if (dateKey >= startDate && dateKey <= endDate) {
+            result.push(...(expenses[dateKey] ?? []));
+          }
         }
       }
       return result.sort((a, b) => a.dateKey.localeCompare(b.dateKey));
     },
-    [expenses]
+    [monthIndex, expenses]
   );
 
   const getMonthlyTotal = useCallback(
     (year: number, month: number, rates: Record<Currency, number>) => {
-      const prefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+      const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+      const bucket = monthIndex.get(monthKey);
+      if (!bucket) return { total: 0, count: 0 };
       let total = 0;
-      let count = 0;
-      for (const [dateKey, list] of Object.entries(expenses)) {
-        if (dateKey.startsWith(prefix)) {
-          for (const e of list) {
-            total += convertToCNY(e.amount, e.currency, rates);
-            count++;
-          }
-        }
+      for (const e of bucket.items) {
+        total += convertToCNY(e.amount, e.currency, rates);
       }
-      return { total, count };
+      return { total, count: bucket.items.length };
     },
-    [expenses]
+    [monthIndex]
   );
 
   const getMonthExpenses = useCallback(
     (year: number, month: number) => {
-      const prefix = `${year}-${String(month + 1).padStart(2, '0')}`;
-      const result: ExpenseItem[] = [];
-      for (const [dateKey, list] of Object.entries(expenses)) {
-        if (dateKey.startsWith(prefix)) {
-          result.push(...list);
-        }
-      }
-      return result;
+      const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+      const bucket = monthIndex.get(monthKey);
+      return bucket?.items ?? [];
     },
-    [expenses]
+    [monthIndex]
   );
 
   const removeByTrip = useCallback((tripId: string) => {
