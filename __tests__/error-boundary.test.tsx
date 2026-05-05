@@ -13,7 +13,7 @@ jest.mock('react-native-safe-area-context', () => {
 const { ErrorBoundary } = require('@/components/error-boundary');
 
 /** 抛出错误的测试组件 */
-function Boom() {
+function Boom(): React.JSX.Element {
   throw new Error('测试错误');
 }
 
@@ -49,7 +49,7 @@ describe('ErrorBoundary', () => {
 
   it('点击重新加载按钮重置错误状态', () => {
     let shouldThrow = true;
-    function ConditionalBoom() {
+    function ConditionalBoom(): React.JSX.Element {
       if (shouldThrow) throw new Error('临时错误');
       return <Text>恢复后的内容</Text>;
     }
