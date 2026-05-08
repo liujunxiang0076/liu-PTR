@@ -1,60 +1,209 @@
+# ─────────────────────────────────────────────────────
+# liu-PTR CI/CD 工作流
+# ─────────────────────────────────────────────────────
+# 触发规则：
+#   - Push 到 master → 测试 + Web 部署
+#   - PR 到 master → 仅测试
+#   - 打 tag (v*) → 测试 + Web + Android APK + 创建 Release
+# ─────────────────────────────────────────────────────
+
 name: Build & Deploy
 
 on:
   push:
     branches: [master]
+    tags: ['v*']
   pull_request:
     branches: [master]
 
+# 并发控制：同一分支只保留最新构建
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  # ── 测试 ──────────────────────────────
+  # ── 测试 ──────────────────────────────────────────────
   test:
+    name: 🧪 Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
-      - run: npm test
-      - run: npm run lint 2>/dev/null || true
 
-  # ── Web 构建 & 部署 ──────────────────
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Run lint
+        run: npm run lint
+
+  # ── Web 构建 & 部署 ──────────────────────────────────
   build-web:
+    name: 🌐 Build & Deploy Web
     needs: test
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
-      - run: npx expo export --platform web
-      - uses: peaceiris/actions-gh-pages@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Export web
+        run: npx expo export --platform web
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
           destination_dir: web
 
-  # ── Android 构建 ──────────────────────
+  # ── Android APK 构建 ─────────────────────────────────
   build-android:
+    name: 🤖 Build Android APK
     needs: test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    if: startsWith(github.ref, 'refs/tags/v')
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
-      - uses: expo/expo-github-action@v8
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
-      - run: eas build --platform android --profile preview --non-interactive --no-wait
+
+      - name: Build APK
+        run: eas build --platform android --profile preview --non-interactive
+
+      - name: Get APK URL
+        id: apk
+        run: |
+          # 等待构建完成并获取下载链接
+          sleep 30
+          BUILD_URL=$(eas build:list --platform android --limit 1 --json | jq -r '.[0].artifacts.buildUrl')
+          echo "url=$BUILD_URL" >> $GITHUB_OUTPUT
+          echo "📦 APK URL: $BUILD_URL"
+
+      - name: Download APK
+        run: |
+          curl -L "${{ steps.apk.outputs.url }}" -o liu-PTR-${{ github.ref_name }}.apk
+          ls -lh liu-PTR-${{ github.ref_name }}.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: liu-PTR-${{ github.ref_name }}.apk
+          retention-days: 90
+
+  # ── 创建 Release ─────────────────────────────────────
+  release:
+    name: 📦 Create Release
+    needs: [test, build-android]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: android-apk
+
+      - name: Generate Release Notes
+        id: notes
+        run: |
+          # 获取上一个 tag
+          PREV_TAG=$(git tag --sort=-creatordate | head -2 | tail -1)
+          if [ "$PREV_TAG" = "${{ github.ref_name }}" ]; then
+            PREV_TAG=""
+          fi
+
+          # 生成变更日志
+          echo "## 🚀 What's Changed" > release_notes.md
+          echo "" >> release_notes.md
+
+          if [ -n "$PREV_TAG" ]; then
+            echo "### Commits since $PREV_TAG" >> release_notes.md
+            git log ${PREV_TAG}..${{ github.ref_name }} --pretty=format:"- %s (%h)" >> release_notes.md
+          else
+            echo "### Initial Release" >> release_notes.md
+            echo "- 🎉 首个发布版本" >> release_notes.md
+          fi
+
+          echo "" >> release_notes.md
+          echo "---" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "## 📦 Downloads" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "| 文件 | 说明 |" >> release_notes.md
+          echo "|------|------|" >> release_notes.md
+          echo "| \`liu-PTR-${{ github.ref_name }}.apk\` | Android APK 安装包 |" >> release_notes.md
+          echo "| \`Source code\` | 源代码 |" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "---" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "## 🌐 Web 版本" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "👉 [在线体验](https://liujunxiang0076.github.io/liu-PTR/web/)" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "---" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "## 📱 安装说明" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### Android" >> release_notes.md
+          echo "1. 下载 \`liu-PTR-${{ github.ref_name }}.apk\`" >> release_notes.md
+          echo "2. 在手机上打开 APK 文件" >> release_notes.md
+          echo "3. 允许安装未知来源应用" >> release_notes.md
+          echo "4. 完成安装" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### Web" >> release_notes.md
+          echo "直接访问：https://liujunxiang0076.github.io/liu-PTR/web/" >> release_notes.md
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: liu-PTR ${{ github.ref_name }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          files: |
+            liu-PTR-${{ github.ref_name }}.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup
+        run: rm -f release_notes.md
