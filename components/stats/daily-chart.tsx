@@ -1,6 +1,12 @@
+/**
+ * 每日柱状图组件
+ * 显示每天的费用支出
+ */
+
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { Spacing, FontSize, FontWeight } from '@/constants/design-tokens';
 import { useAppColors } from '@/hooks/use-app-colors';
 
 type Props = {
@@ -43,7 +49,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     height: 80,
     gap: 2,
-    paddingVertical: 4,
+    paddingVertical: Spacing.xs,
   },
   column: {
     alignItems: 'center',
@@ -59,7 +65,7 @@ const styles = StyleSheet.create({
     minHeight: 2,
   },
   label: {
-    fontSize: 8,
+    fontSize: FontSize.xs,
     marginTop: 2,
   },
 });

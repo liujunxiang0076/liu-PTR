@@ -1,30 +1,48 @@
+/**
+ * 分类统计组件
+ * 显示费用分类占比
+ */
+
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { CATEGORIES, type Currency, type ExpenseCategory, type ExpenseItem } from '@/types/expense';
-import { getCategoryColor, computeCategoryTotals } from '@/constants/currency';
+import { Card } from '@/components/ui/card';
+import { CATEGORIES, type Currency, type ExpenseItem } from '@/types/expense';
+import { computeCategoryTotals } from '@/constants/currency';
+import { Spacing, FontSize, FontWeight, CategoryColors } from '@/constants/design-tokens';
 import { useAppColors } from '@/hooks/use-app-colors';
 
 type Props = {
   expenses: ExpenseItem[];
   rates: Record<Currency, number>;
+  borderColor: string;
+  panelBg: string;
+  sectionTitle: string;
   emptyText?: string;
 };
 
-export function CategoryBreakdown({ expenses, rates, emptyText = '暂无费用记录' }: Props) {
+export function CategoryBreakdown({
+  expenses,
+  rates,
+  borderColor,
+  panelBg,
+  sectionTitle,
+  emptyText = '暂无费用记录',
+}: Props) {
   const { text: textColor, muted: mutedColor } = useAppColors();
   const categoryTotals = computeCategoryTotals(expenses, rates);
   const maxCatTotal = Math.max(...Object.values(categoryTotals), 1);
   const hasData = CATEGORIES.some((c) => categoryTotals[c] > 0);
 
   return (
-    <View style={styles.container}>
+    <Card borderColor={borderColor} backgroundColor={panelBg}>
+      <ThemedText style={styles.title}>{sectionTitle}</ThemedText>
       {hasData ? (
         <View style={styles.list}>
           {CATEGORIES.filter((c) => categoryTotals[c] > 0).map((cat) => (
             <View key={cat} style={styles.row}>
               <View style={styles.labelRow}>
-                <View style={[styles.dot, { backgroundColor: getCategoryColor(cat) }]} />
+                <View style={[styles.dot, { backgroundColor: CategoryColors[cat] }]} />
                 <ThemedText style={styles.name}>{cat}</ThemedText>
               </View>
               <View style={styles.barArea}>
@@ -34,7 +52,7 @@ export function CategoryBreakdown({ expenses, rates, emptyText = '暂无费用�
                       styles.barFill,
                       {
                         width: `${(categoryTotals[cat] / maxCatTotal) * 100}%`,
-                        backgroundColor: getCategoryColor(cat),
+                        backgroundColor: CategoryColors[cat],
                       },
                     ]}
                   />
@@ -49,24 +67,26 @@ export function CategoryBreakdown({ expenses, rates, emptyText = '暂无费用�
       ) : (
         <ThemedText style={[styles.emptyText, { color: mutedColor }]}>{emptyText}</ThemedText>
       )}
-    </View>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    gap: 10,
+  title: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+    marginBottom: Spacing.xs,
   },
   list: {
-    gap: 10,
+    gap: Spacing.md,
   },
   row: {
-    gap: 6,
+    gap: Spacing.sm,
   },
   labelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: Spacing.sm,
   },
   dot: {
     width: 8,
@@ -74,13 +94,13 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   name: {
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.medium,
   },
   barArea: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: Spacing.sm,
   },
   barBg: {
     flex: 1,
@@ -96,12 +116,12 @@ const styles = StyleSheet.create({
   amount: {
     width: 60,
     textAlign: 'right',
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: FontSize.md,
     textAlign: 'center',
-    paddingVertical: 12,
+    paddingVertical: Spacing.md,
   },
 });

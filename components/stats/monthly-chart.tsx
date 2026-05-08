@@ -1,8 +1,14 @@
+/**
+ * 月度柱状图组件
+ * 显示每月的费用支出趋势
+ */
+
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { useAppColors } from '@/hooks/use-app-colors';
+import { Spacing, FontSize, FontWeight } from '@/constants/design-tokens';
 import { compactAmount } from '@/constants/currency';
+import { useAppColors } from '@/hooks/use-app-colors';
 
 const MONTH_NAMES = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
 
@@ -46,8 +52,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'flex-end',
-    gap: 4,
-    paddingVertical: 4,
+    gap: Spacing.xs,
+    paddingVertical: Spacing.xs,
     minHeight: 120,
   },
   column: {
@@ -65,12 +71,12 @@ const styles = StyleSheet.create({
     minHeight: 2,
   },
   value: {
-    fontSize: 8,
-    fontWeight: '500',
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.medium,
     textAlign: 'center',
   },
   label: {
-    fontSize: 8,
+    fontSize: FontSize.xs,
     marginTop: 2,
   },
 });

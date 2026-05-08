@@ -1,10 +1,16 @@
-import { useMemo } from 'react';
+/**
+ * 年度统计组件
+ * 显示年度汇总信息
+ */
+
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { Card } from '@/components/ui/card';
 import { CategoryBreakdown } from './category-breakdown';
 import { MonthlyChart } from './monthly-chart';
 import { type ExpenseItem, type Currency } from '@/types/expense';
+import { Spacing, FontSize, FontWeight } from '@/constants/design-tokens';
 
 type Props = {
   year: number;
@@ -18,7 +24,6 @@ type Props = {
   panelBg: string;
   textColor: string;
   mutedColor: string;
-  sectionTitleStyle: object;
 };
 
 export function YearStats({
@@ -33,12 +38,11 @@ export function YearStats({
   panelBg,
   textColor,
   mutedColor,
-  sectionTitleStyle,
 }: Props) {
   return (
     <>
       {/* 年度汇总 */}
-      <View style={[styles.card, { borderColor, backgroundColor: panelBg }]}>
+      <Card borderColor={borderColor} backgroundColor={panelBg}>
         <View style={styles.summaryRow}>
           <View style={styles.summaryItem}>
             <ThemedText style={[styles.summaryValue, { color: tint }]}>
@@ -57,43 +61,46 @@ export function YearStats({
             <ThemedText style={[styles.summaryLabel, { color: mutedColor }]}>笔均金额</ThemedText>
           </View>
         </View>
-      </View>
+      </Card>
 
       {/* 月度趋势柱状图 */}
-      <View style={[styles.card, { borderColor, backgroundColor: panelBg }]}>
-        <ThemedText style={sectionTitleStyle}>月度趋势</ThemedText>
+      <Card borderColor={borderColor} backgroundColor={panelBg}>
+        <ThemedText style={styles.sectionTitle}>月度趋势</ThemedText>
         <MonthlyChart monthlyTotals={monthlyTotals} />
-      </View>
+      </Card>
 
       {/* 年度分类统计 */}
-      <View style={[styles.card, { borderColor, backgroundColor: panelBg }]}>
-        <ThemedText style={sectionTitleStyle}>分类统计</ThemedText>
-        <CategoryBreakdown expenses={yearExpenses} rates={rates} emptyText="本年暂无费用记录" />
-      </View>
+      <CategoryBreakdown
+        expenses={yearExpenses}
+        rates={rates}
+        borderColor={borderColor}
+        panelBg={panelBg}
+        sectionTitle="分类统计"
+        emptyText="本年暂无费用记录"
+      />
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 14,
-    padding: 16,
-    gap: 12,
-  },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
   },
   summaryItem: {
     alignItems: 'center',
-    gap: 4,
+    gap: Spacing.xs,
   },
   summaryValue: {
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: FontSize.xxl,
+    fontWeight: FontWeight.bold,
   },
   summaryLabel: {
-    fontSize: 12,
+    fontSize: FontSize.sm,
+  },
+  sectionTitle: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+    marginBottom: Spacing.xs,
   },
 });

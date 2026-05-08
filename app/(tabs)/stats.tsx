@@ -7,6 +7,7 @@ import { MonthStats } from '@/components/stats/month-stats';
 import { YearStats } from '@/components/stats/year-stats';
 import { useAppContext } from '@/components/app-context';
 import { useAppColors } from '@/hooks/use-app-colors';
+import { Spacing, BorderRadius, FontSize, FontWeight } from '@/constants/design-tokens';
 
 type ViewMode = 'month' | 'year';
 
@@ -82,8 +83,6 @@ export default function StatsScreen() {
   const prevYear = () => setYear(year - 1);
   const nextYear = () => setYear(year + 1);
 
-  const sectionTitleStyle = [styles.sectionTitle];
-
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -134,7 +133,6 @@ export default function StatsScreen() {
             panelBg={panelBg}
             textColor={textColor}
             mutedColor={mutedColor}
-            sectionTitleStyle={sectionTitleStyle}
           />
         ) : (
           <YearStats
@@ -149,11 +147,10 @@ export default function StatsScreen() {
             panelBg={panelBg}
             textColor={textColor}
             mutedColor={mutedColor}
-            sectionTitleStyle={sectionTitleStyle}
           />
         )}
 
-        <View style={{ height: 40 }} />
+        <View style={styles.bottomSpacer} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -164,26 +161,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
-    gap: 12,
+    padding: Spacing.lg,
+    gap: Spacing.md,
   },
   modeToggle: {
     flexDirection: 'row',
     backgroundColor: 'rgba(0,0,0,0.05)',
-    borderRadius: 10,
+    borderRadius: BorderRadius.md,
     padding: 3,
     gap: 3,
   },
   modeBtn: {
     flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.sm,
     alignItems: 'center',
   },
   modeBtnActive: {},
   modeBtnText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.medium,
     opacity: 0.5,
   },
   modeBtnTextActive: {
@@ -195,18 +192,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 20,
-    paddingVertical: 8,
+    paddingVertical: Spacing.sm,
   },
   arrow: {
-    fontSize: 18,
+    fontSize: FontSize.xl,
   },
   monthLabel: {
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: FontSize.xxl,
+    fontWeight: FontWeight.bold,
   },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 4,
+  bottomSpacer: {
+    height: Spacing.xxl,
   },
 });

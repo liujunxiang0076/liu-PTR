@@ -1,11 +1,20 @@
+/**
+ * 月度统计组件
+ * 显示月度汇总信息
+ */
+
 import { useCallback, useMemo } from 'react';
-import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 
 import { ThemedText } from '@/components/themed-text';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { CategoryBreakdown } from './category-breakdown';
 import { DailyChart } from './daily-chart';
 import { type Trip, type ExpenseItem, type Currency } from '@/types/expense';
+import { generateCSV } from '@/utils/csv-export';
+import { Spacing, FontSize, FontWeight } from '@/constants/design-tokens';
 
 type Props = {
   year: number;
@@ -22,7 +31,6 @@ type Props = {
   panelBg: string;
   textColor: string;
   mutedColor: string;
-  sectionTitleStyle: object;
 };
 
 export function MonthStats({
@@ -40,10 +48,7 @@ export function MonthStats({
   panelBg,
   textColor,
   mutedColor,
-  sectionTitleStyle,
 }: Props) {
-  const monthLabel = `${year}年${month + 1}月`;
-
   const dailyTotals = useMemo(() => {
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const days: number[] = [];
@@ -65,7 +70,7 @@ export function MonthStats({
   return (
     <>
       {/* 月度汇总 */}
-      <View style={[styles.card, { borderColor, backgroundColor: panelBg }]}>
+      <Card borderColor={borderColor} backgroundColor={panelBg}>
         <View style={styles.summaryRow}>
           <View style={styles.summaryItem}>
             <ThemedText style={[styles.summaryValue, { color: tint }]}>
@@ -84,65 +89,58 @@ export function MonthStats({
             <ThemedText style={[styles.summaryLabel, { color: mutedColor }]}>差旅行程</ThemedText>
           </View>
         </View>
-      </View>
+      </Card>
 
       {/* 分类占比 */}
-      <View style={[styles.card, { borderColor, backgroundColor: panelBg }]}>
-        <ThemedText style={sectionTitleStyle}>分类统计</ThemedText>
-        <CategoryBreakdown expenses={monthExpenses} rates={rates} emptyText="本月暂无费用记录" />
-      </View>
+      <CategoryBreakdown
+        expenses={monthExpenses}
+        rates={rates}
+        borderColor={borderColor}
+        panelBg={panelBg}
+        sectionTitle="分类统计"
+        emptyText="本月暂无费用记录"
+      />
 
       {/* 日支出柱状图 */}
-      <View style={[styles.card, { borderColor, backgroundColor: panelBg }]}>
-        <ThemedText style={sectionTitleStyle}>每日支出</ThemedText>
+      <Card borderColor={borderColor} backgroundColor={panelBg}>
+        <ThemedText style={styles.sectionTitle}>每日支出</ThemedText>
         <DailyChart dailyTotals={dailyTotals} />
-      </View>
+      </Card>
 
       {/* 导出按钮 */}
       {monthCount > 0 && (
-        <TouchableOpacity style={[styles.exportBtn, { backgroundColor: tint }]} onPress={handleExport}>
-          <ThemedText style={styles.exportBtnText}>导出本月 CSV</ThemedText>
-        </TouchableOpacity>
+        <Button
+          label="导出本月 CSV"
+          variant="primary"
+          size="lg"
+          color={tint}
+          onPress={handleExport}
+          fullWidth
+        />
       )}
     </>
   );
 }
 
-// 临时导入 generateCSV
-import { generateCSV } from '@/utils/csv-export';
-
 const styles = StyleSheet.create({
-  card: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 14,
-    padding: 16,
-    gap: 12,
-  },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
   },
   summaryItem: {
     alignItems: 'center',
-    gap: 4,
+    gap: Spacing.xs,
   },
   summaryValue: {
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: FontSize.xxl,
+    fontWeight: FontWeight.bold,
   },
   summaryLabel: {
-    fontSize: 12,
+    fontSize: FontSize.sm,
   },
-  exportBtn: {
-    height: 48,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 4,
-  },
-  exportBtnText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+  sectionTitle: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+    marginBottom: Spacing.xs,
   },
 });
