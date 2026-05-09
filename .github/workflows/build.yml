@@ -93,37 +93,29 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
       - name: Install dependencies
         run: npm ci
 
-      - name: Setup EAS
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --clean
 
       - name: Build APK
-        run: eas build --platform android --profile preview --non-interactive
-
-      - name: Get APK URL
-        id: apk
         run: |
-          # 等待构建完成并获取下载链接
-          sleep 30
-          BUILD_URL=$(eas build:list --platform android --limit 1 --json | jq -r '.[0].artifacts.buildUrl')
-          echo "url=$BUILD_URL" >> $GITHUB_OUTPUT
-          echo "📦 APK URL: $BUILD_URL"
-
-      - name: Download APK
-        run: |
-          curl -L "${{ steps.apk.outputs.url }}" -o liu-PTR-${{ github.ref_name }}.apk
-          ls -lh liu-PTR-${{ github.ref_name }}.apk
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
-          path: liu-PTR-${{ github.ref_name }}.apk
+          path: android/app/build/outputs/apk/release/app-release.apk
           retention-days: 90
 
   # ── 创建 Release ─────────────────────────────────────
@@ -142,6 +134,9 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: android-apk
+
+      - name: Rename APK
+        run: mv app-release.apk liu-PTR-${{ github.ref_name }}.apk
 
       - name: Generate Release Notes
         id: notes
