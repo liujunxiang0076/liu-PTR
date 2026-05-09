@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react-native';
 import { useExpenses } from '@/hooks/use-expenses';
-import { type Currency, type ExpenseCategory } from '@/types/expense';
+import { type ExpenseCategory } from '@/types/expense';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 jest.mock('@react-native-async-storage/async-storage', () => ({
@@ -8,13 +8,11 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   setItem: jest.fn(() => Promise.resolve()),
 }));
 
-const RATES: Record<Currency, number> = { CNY: 1, USD: 0.14, EUR: 0.13, JPY: 20.5, GBP: 0.11 };
-
 function makeItem(overrides: Partial<{
-  amount: number; currency: Currency; category: ExpenseCategory; notes: string; tripId: string | null;
+  amount: number; category: ExpenseCategory; notes: string; tripId: string | null;
 }> = {}) {
   return {
-    amount: 100, currency: 'CNY' as Currency, category: '交通' as ExpenseCategory,
+    amount: 100, category: '交通' as ExpenseCategory,
     notes: '测试', tripId: null, ...overrides,
   };
 }
@@ -87,15 +85,15 @@ describe('useExpenses', () => {
     expect(result.current.hasRecords('2026-01-15')).toBe(true);
   });
 
-  it('getDailyTotal 按人民币计算每日总额', async () => {
+  it('getDailyTotal 计算每日总额', async () => {
     const { result } = renderHook(() => useExpenses());
     await act(async () => {});
     act(() => {
       result.current.add('2026-01-15', makeItem({ amount: 100 }));
-      result.current.add('2026-01-15', makeItem({ amount: 1, currency: 'USD' }));
+      result.current.add('2026-01-15', makeItem({ amount: 50 }));
     });
-    const total = result.current.getDailyTotal('2026-01-15', RATES);
-    expect(total).toBeCloseTo(100 + 1 / 0.14, 2);
+    const total = result.current.getDailyTotal('2026-01-15');
+    expect(total).toBe(150);
   });
 
   it('getByTrip 按行程筛选', async () => {
@@ -132,7 +130,7 @@ describe('useExpenses', () => {
       result.current.add('2026-01-20', makeItem({ amount: 50 }));
       result.current.add('2026-02-10', makeItem({ amount: 200 }));
     });
-    const jan = result.current.getMonthlyTotal(2026, 0, RATES);
+    const jan = result.current.getMonthlyTotal(2026, 0);
     expect(jan.total).toBe(150);
     expect(jan.count).toBe(2);
   });
@@ -169,7 +167,7 @@ describe('useExpenses', () => {
     });
     const importData = {
       '2026-03-01': [{
-        id: 'imp-1', amount: 999, currency: 'CNY' as Currency,
+        id: 'imp-1', amount: 999,
         category: '餐饮' as ExpenseCategory, notes: '导入', tripId: null, createdAt: Date.now(), dateKey: '2026-03-01',
       }],
     };

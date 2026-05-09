@@ -22,14 +22,13 @@ import { useAppContext } from '@/components/app-context';
 import { getHoliday, getRestDayBadge } from '@/constants/holidays';
 import { formatAmount, getCategoryColor, computeBudgetProgress } from '@/constants/currency';
 import { useAppColors } from '@/hooks/use-app-colors';
+import { useLocation } from '@/hooks/use-location';
 import { SemanticColors } from '@/constants/theme';
 import { ThemedText } from './themed-text';
 import {
-  type Currency,
   type ExpenseCategory,
+  type LocationInfo,
   CATEGORIES,
-  CURRENCIES,
-  CURRENCY_SYMBOLS,
 } from '@/types/expense';
 
 type Props = {
@@ -46,13 +45,14 @@ const PANEL_DURATION = 280;
 
 export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: Props) {
   const { getByDate, addExpense, updateExpense, removeExpense, getDailyTotal, getActiveTrip, getDayBudget } = useAppContext();
+  const { location, loading: locationLoading, error: locationError, requestLocation, clearLocation } = useLocation();
 
   const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState<Currency>('CNY');
   const [category, setCategory] = useState<ExpenseCategory>('餐饮');
   const [notes, setNotes] = useState('');
   const [shouldRender, setShouldRender] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<LocationInfo | null>(null);
   const amountRef = useRef<TextInput>(null);
 
   const records = getByDate(dateKey);
@@ -71,11 +71,12 @@ export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: 
 
   const resetForm = useCallback(() => {
     setAmount('');
-    setCurrency('CNY');
     setCategory('餐饮');
     setNotes('');
     setEditingId(null);
-  }, []);
+    setCurrentLocation(null);
+    clearLocation();
+  }, [clearLocation]);
 
   useEffect(() => {
     if (visible) {
@@ -100,12 +101,14 @@ export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: 
     transform: [{ translateY: panelY.value * 400 }],
   }));
 
-  const handleStartEdit = useCallback((id: string, item: { amount: number; currency: Currency; category: ExpenseCategory; notes: string }) => {
+  const handleStartEdit = useCallback((id: string, item: { amount: number; category: ExpenseCategory; notes: string; location?: LocationInfo }) => {
     setEditingId(id);
     setAmount(String(item.amount));
-    setCurrency(item.currency);
     setCategory(item.category);
     setNotes(item.notes);
+    if (item.location) {
+      setCurrentLocation(item.location);
+    }
     amountRef.current?.focus();
   }, []);
 
@@ -114,28 +117,35 @@ export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: 
     Keyboard.dismiss();
   }, [resetForm]);
 
+  const handleGetLocation = useCallback(async () => {
+    const loc = await requestLocation();
+    if (loc) {
+      setCurrentLocation(loc);
+    }
+  }, [requestLocation]);
+
   const handleSave = useCallback(() => {
     const num = parseFloat(amount);
     if (isNaN(num) || num <= 0) return;
     if (editingId) {
       updateExpense(dateKey, editingId, {
         amount: num,
-        currency,
         category,
         notes: notes.trim(),
+        location: currentLocation || undefined,
       });
     } else {
       addExpense(dateKey, {
         amount: num,
-        currency,
         category,
         notes: notes.trim(),
         tripId: activeTrip?.id ?? null,
+        location: currentLocation || undefined,
       });
     }
     resetForm();
     Keyboard.dismiss();
-  }, [amount, currency, category, notes, editingId, addExpense, updateExpense, dateKey, activeTrip, resetForm]);
+  }, [amount, category, notes, editingId, currentLocation, addExpense, updateExpense, dateKey, activeTrip, resetForm]);
 
   const { tint, text: textColor, muted: mutedColor, border: borderColor, inputBg, panelBg, danger: dangerColor } = useAppColors();
   const holidayColor = dangerColor;
@@ -258,10 +268,15 @@ export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: 
                       {item.notes}
                     </ThemedText>
                   ) : null}
+                  {item.location?.address ? (
+                    <ThemedText style={[styles.locationText, { color: mutedColor }]} numberOfLines={1}>
+                      📍 {item.location.address}
+                    </ThemedText>
+                  ) : null}
                 </View>
               </View>
               <ThemedText style={[styles.recordAmount, { color: textColor }]}>
-                {formatAmount(item.amount, item.currency)}
+                {formatAmount(item.amount)}
               </ThemedText>
               <TouchableOpacity
                 onPress={() => Alert.alert('确认删除', '确定要删除这条费用记录吗？', [
@@ -287,27 +302,6 @@ export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: 
             </View>
           )}
 
-          {/* 币种选择 */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.currencyRow}>
-            {CURRENCIES.map((c) => (
-              <TouchableOpacity
-                key={c}
-                style={[
-                  styles.currencyPill,
-                  currency === c && { backgroundColor: tint },
-                ]}
-                onPress={() => setCurrency(c)}>
-                <ThemedText
-                  style={[
-                    styles.currencyPillText,
-                    currency === c && { color: '#fff' },
-                  ]}>
-                  {CURRENCY_SYMBOLS[c]} {c}
-                </ThemedText>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
           {/* 分类选择 */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryRow}>
             {CATEGORIES.map((c) => (
@@ -328,6 +322,29 @@ export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: 
               </TouchableOpacity>
             ))}
           </ScrollView>
+
+          {/* 定位信息 */}
+          <View style={styles.locationRow}>
+            {currentLocation ? (
+              <View style={[styles.locationInfo, { backgroundColor: inputBg }]}>
+                <ThemedText style={[styles.locationAddress, { color: textColor }]} numberOfLines={1}>
+                  📍 {currentLocation.address || '已获取定位'}
+                </ThemedText>
+                <TouchableOpacity onPress={() => setCurrentLocation(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <ThemedText style={[styles.clearLocation, { color: mutedColor }]}>×</ThemedText>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[styles.locationBtn, { backgroundColor: inputBg }]}
+                onPress={handleGetLocation}
+                disabled={locationLoading}>
+                <ThemedText style={[styles.locationBtnText, { color: mutedColor }]}>
+                  {locationLoading ? '获取中...' : '📍 添加定位'}
+                </ThemedText>
+              </TouchableOpacity>
+            )}
+          </View>
 
           {/* 金额 + 备注 + 添加按钮 */}
           <View style={styles.inputRow}>
@@ -510,6 +527,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
+  locationText: {
+    fontSize: 11,
+    marginTop: 2,
+  },
   recordAmount: {
     fontSize: 15,
     fontWeight: '600',
@@ -538,20 +559,6 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     gap: 8,
   },
-  currencyRow: {
-    flexDirection: 'row',
-  },
-  currencyPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    marginRight: 6,
-  },
-  currencyPillText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
   categoryRow: {
     flexDirection: 'row',
   },
@@ -564,6 +571,37 @@ const styles = StyleSheet.create({
   },
   categoryPillText: {
     fontSize: 13,
+    fontWeight: '500',
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  locationInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  locationAddress: {
+    fontSize: 12,
+    flex: 1,
+  },
+  clearLocation: {
+    fontSize: 18,
+    fontWeight: '300',
+    marginLeft: 8,
+  },
+  locationBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  locationBtnText: {
+    fontSize: 12,
     fontWeight: '500',
   },
   inputRow: {

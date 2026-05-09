@@ -1,8 +1,16 @@
-/** 币种 */
-export type Currency = 'CNY' | 'USD' | 'EUR' | 'JPY' | 'GBP';
+/** 币种 - 只保留人民币 */
+export type Currency = 'CNY';
 
-/** 费用类别 */
-export type ExpenseCategory = '交通' | '住宿' | '餐饮' | '通讯' | '办公' | '其他';
+/** 费用类别 - 添加驻场 */
+export type ExpenseCategory = '交通' | '住宿' | '餐饮' | '通讯' | '办公' | '驻场' | '其他';
+
+/** 定位信息 */
+export type LocationInfo = {
+  latitude: number;
+  longitude: number;
+  address?: string;
+  timestamp: number;
+};
 
 /** 费用记录 */
 export type ExpenseItem = {
@@ -14,6 +22,7 @@ export type ExpenseItem = {
   tripId: string | null;
   createdAt: number;
   dateKey: string;
+  location?: LocationInfo;
 };
 
 /** 差旅行程 */
@@ -37,9 +46,9 @@ export type ExchangeRates = {
 /** 按日期分组的费用表 */
 export type ExpensesMap = Record<string, ExpenseItem[]>;
 
-export const CURRENCIES: Currency[] = ['CNY', 'USD', 'EUR', 'JPY', 'GBP'];
+export const CURRENCIES: Currency[] = ['CNY'];
 
-export const CATEGORIES: ExpenseCategory[] = ['交通', '住宿', '餐饮', '通讯', '办公', '其他'];
+export const CATEGORIES: ExpenseCategory[] = ['交通', '住宿', '餐饮', '通讯', '办公', '驻场', '其他'];
 
 /** 分类颜色 */
 export const CATEGORY_COLORS: Record<ExpenseCategory, string> = {
@@ -48,6 +57,7 @@ export const CATEGORY_COLORS: Record<ExpenseCategory, string> = {
   '餐饮': '#7ED321',
   '通讯': '#9B59B6',
   '办公': '#E74C3C',
+  '驻场': '#1ABC9C',
   '其他': '#95A5A6',
 };
 
@@ -61,8 +71,4 @@ export type DailyBudget = {
 /** 币种符号 */
 export const CURRENCY_SYMBOLS: Record<Currency, string> = {
   CNY: '¥',
-  USD: '$',
-  EUR: '€',
-  JPY: '¥',
-  GBP: '£',
 };

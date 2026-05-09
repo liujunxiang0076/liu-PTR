@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { type Currency, type ExpenseCategory, type ExpenseItem, type ExpensesMap } from '@/types/expense';
-import { convertToCNY, uid } from '@/constants/currency';
+import { type ExpenseCategory, type ExpenseItem, type ExpensesMap } from '@/types/expense';
+import { uid } from '@/constants/currency';
 
 const STORAGE_KEY = '@expenses:v1';
 const SAVE_DELAY = 500;
@@ -125,9 +125,9 @@ export function useExpenses() {
   );
 
   const getDailyTotal = useCallback(
-    (dateKey: string, rates: Record<Currency, number>) => {
+    (dateKey: string) => {
       const list = expenses[dateKey] ?? [];
-      return list.reduce((sum, e) => sum + convertToCNY(e.amount, e.currency, rates), 0);
+      return list.reduce((sum, e) => sum + e.amount, 0);
     },
     [expenses]
   );
@@ -156,13 +156,13 @@ export function useExpenses() {
   );
 
   const getMonthlyTotal = useCallback(
-    (year: number, month: number, rates: Record<Currency, number>) => {
+    (year: number, month: number) => {
       const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
       const bucket = monthIndex.get(monthKey);
       if (!bucket) return { total: 0, count: 0 };
       let total = 0;
       for (const e of bucket.items) {
-        total += convertToCNY(e.amount, e.currency, rates);
+        total += e.amount;
       }
       return { total, count: bucket.items.length };
     },

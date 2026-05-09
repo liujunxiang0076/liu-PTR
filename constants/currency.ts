@@ -7,27 +7,10 @@ import {
   CATEGORY_COLORS,
 } from '@/types/expense';
 
-/** 默认汇率（相对 CNY） */
-export const DEFAULT_RATES: Record<Currency, number> = {
-  CNY: 1,
-  USD: 0.14,
-  EUR: 0.13,
-  JPY: 20.5,
-  GBP: 0.11,
-};
-
 /** 格式化金额显示 */
-export function formatAmount(amount: number, currency: Currency): string {
+export function formatAmount(amount: number, currency: Currency = 'CNY'): string {
   const symbol = CURRENCY_SYMBOLS[currency];
-  const fixed = currency === 'JPY' ? Math.round(amount).toString() : amount.toFixed(2);
-  return `${symbol}${fixed}`;
-}
-
-/** 将任意币种金额转为 CNY */
-export function convertToCNY(amount: number, from: Currency, rates: Record<Currency, number>): number {
-  if (from === 'CNY') return amount;
-  const rate = rates[from] ?? DEFAULT_RATES[from] ?? 1;
-  return amount / rate;
+  return `${symbol}${amount.toFixed(2)}`;
 }
 
 /** 获取分类颜色 */
@@ -36,11 +19,11 @@ export function getCategoryColor(category: ExpenseCategory): string {
 }
 
 /** 紧凑金额格式（日历格用） */
-export function compactAmount(cnyAmount: number): string {
-  if (cnyAmount <= 0) return '';
-  if (cnyAmount >= 10000) return `${(cnyAmount / 10000).toFixed(1)}万`;
-  if (cnyAmount >= 1000) return `${(cnyAmount / 1000).toFixed(1)}k`;
-  return Math.round(cnyAmount).toString();
+export function compactAmount(amount: number): string {
+  if (amount <= 0) return '';
+  if (amount >= 10000) return `${(amount / 10000).toFixed(1)}万`;
+  if (amount >= 1000) return `${(amount / 1000).toFixed(1)}k`;
+  return Math.round(amount).toString();
 }
 
 let uidCounter = 0;
@@ -50,9 +33,9 @@ export function uid() {
   return Date.now().toString(36) + uidCounter.toString(36) + Math.random().toString(36).slice(2, 10);
 }
 
-/** 计算一组费用的 CNY 总额 */
-export function sumExpensesInCNY(expenses: ExpenseItem[], rates: Record<Currency, number>): number {
-  return expenses.reduce((sum, e) => sum + convertToCNY(e.amount, e.currency, rates), 0);
+/** 计算一组费用的总额 */
+export function sumExpenses(expenses: ExpenseItem[]): number {
+  return expenses.reduce((sum, e) => sum + e.amount, 0);
 }
 
 /** 预算进度颜色阈值 */
@@ -71,15 +54,12 @@ export function computeBudgetProgress(spent: number, budget: number) {
   return { rawPct, pct, barColor };
 }
 
-/** 按分类汇总费用（CNY） */
-export function computeCategoryTotals(
-  expenses: ExpenseItem[],
-  rates: Record<Currency, number>,
-): Record<string, number> {
+/** 按分类汇总费用 */
+export function computeCategoryTotals(expenses: ExpenseItem[]): Record<string, number> {
   const totals: Record<string, number> = {};
   for (const cat of CATEGORIES) totals[cat] = 0;
   for (const e of expenses) {
-    totals[e.category] = (totals[e.category] ?? 0) + convertToCNY(e.amount, e.currency, rates);
+    totals[e.category] = (totals[e.category] ?? 0) + e.amount;
   }
   return totals;
 }

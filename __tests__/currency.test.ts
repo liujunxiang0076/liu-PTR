@@ -1,60 +1,14 @@
 import {
-  formatAmount, convertToCNY, getCategoryColor, compactAmount, sumExpensesInCNY, uid,
+  formatAmount, getCategoryColor, compactAmount, sumExpenses, uid,
   computeBudgetProgress, computeCategoryTotals,
   BUDGET_WARN_THRESHOLD, BUDGET_DANGER_THRESHOLD,
 } from '@/constants/currency';
-import { type Currency, type ExpenseCategory, type ExpenseItem } from '@/types/expense';
-
-const RATES: Record<Currency, number> = {
-  CNY: 1,
-  USD: 0.14,
-  EUR: 0.13,
-  JPY: 20.5,
-  GBP: 0.11,
-};
+import { type ExpenseCategory, type ExpenseItem } from '@/types/expense';
 
 describe('formatAmount', () => {
   it('格式化人民币金额', () => {
-    expect(formatAmount(100, 'CNY')).toBe('¥100.00');
-    expect(formatAmount(0.5, 'CNY')).toBe('¥0.50');
-  });
-
-  it('格式化日元取整', () => {
-    expect(formatAmount(100.7, 'JPY')).toBe('¥101');
-    expect(formatAmount(999, 'JPY')).toBe('¥999');
-  });
-
-  it('格式化美元', () => {
-    expect(formatAmount(50.5, 'USD')).toBe('$50.50');
-  });
-
-  it('格式化欧元', () => {
-    expect(formatAmount(200, 'EUR')).toBe('€200.00');
-  });
-
-  it('格式化英镑', () => {
-    expect(formatAmount(30, 'GBP')).toBe('£30.00');
-  });
-});
-
-describe('convertToCNY', () => {
-  it('人民币原样返回', () => {
-    expect(convertToCNY(100, 'CNY', RATES)).toBe(100);
-  });
-
-  it('美元转人民币', () => {
-    const result = convertToCNY(1, 'USD', RATES);
-    expect(result).toBeCloseTo(1 / 0.14, 5);
-  });
-
-  it('日元转人民币', () => {
-    const result = convertToCNY(20.5, 'JPY', RATES);
-    expect(result).toBeCloseTo(1, 5);
-  });
-
-  it('未知币种回退默认汇率', () => {
-    const result = convertToCNY(1, 'USD', { CNY: 1, USD: 0.5, EUR: 0.13, JPY: 20.5, GBP: 0.11 });
-    expect(result).toBeCloseTo(2, 5);
+    expect(formatAmount(100)).toBe('¥100.00');
+    expect(formatAmount(0.5)).toBe('¥0.50');
   });
 });
 
@@ -62,6 +16,7 @@ describe('getCategoryColor', () => {
   it('返回各分类颜色', () => {
     expect(getCategoryColor('交通')).toBe('#4A90D9');
     expect(getCategoryColor('餐饮')).toBe('#7ED321');
+    expect(getCategoryColor('驻场')).toBe('#1ABC9C');
     expect(getCategoryColor('其他')).toBe('#95A5A6');
   });
 });
@@ -88,26 +43,17 @@ describe('compactAmount', () => {
   });
 });
 
-describe('sumExpensesInCNY', () => {
+describe('sumExpenses', () => {
   it('空数组返回0', () => {
-    expect(sumExpensesInCNY([], RATES)).toBe(0);
+    expect(sumExpenses([])).toBe(0);
   });
 
   it('累加多项费用', () => {
     const expenses = [
-      { amount: 100, currency: 'CNY' as Currency },
-      { amount: 100, currency: 'CNY' as Currency },
+      { amount: 100 },
+      { amount: 100 },
     ] as ExpenseItem[];
-    expect(sumExpensesInCNY(expenses, RATES)).toBe(200);
-  });
-
-  it('混合币种累加', () => {
-    const expenses = [
-      { amount: 100, currency: 'CNY' as Currency },
-      { amount: 1, currency: 'USD' as Currency },
-    ] as ExpenseItem[];
-    const result = sumExpensesInCNY(expenses, RATES);
-    expect(result).toBeCloseTo(100 + 1 / 0.14, 2);
+    expect(sumExpenses(expenses)).toBe(200);
   });
 });
 
@@ -160,30 +106,21 @@ describe('computeBudgetProgress', () => {
 
 describe('computeCategoryTotals', () => {
   it('空数组返回所有分类为零', () => {
-    const result = computeCategoryTotals([], RATES);
-    for (const cat of ['交通', '住宿', '餐饮', '通讯', '办公', '其他']) {
+    const result = computeCategoryTotals([]);
+    for (const cat of ['交通', '住宿', '餐饮', '通讯', '办公', '驻场', '其他']) {
       expect(result[cat]).toBe(0);
     }
   });
 
-  it('按分类累加费用（CNY）', () => {
+  it('按分类累加费用', () => {
     const expenses = [
-      { category: '交通' as ExpenseCategory, amount: 100, currency: 'CNY' as Currency },
-      { category: '交通' as ExpenseCategory, amount: 50, currency: 'CNY' as Currency },
-      { category: '餐饮' as ExpenseCategory, amount: 30, currency: 'CNY' as Currency },
+      { category: '交通' as ExpenseCategory, amount: 100 },
+      { category: '交通' as ExpenseCategory, amount: 50 },
+      { category: '餐饮' as ExpenseCategory, amount: 30 },
     ] as ExpenseItem[];
-    const result = computeCategoryTotals(expenses, RATES);
+    const result = computeCategoryTotals(expenses);
     expect(result['交通']).toBe(150);
     expect(result['餐饮']).toBe(30);
     expect(result['住宿']).toBe(0);
-  });
-
-  it('混合币种转换后累加', () => {
-    const expenses = [
-      { category: '交通' as ExpenseCategory, amount: 100, currency: 'CNY' as Currency },
-      { category: '交通' as ExpenseCategory, amount: 1, currency: 'USD' as Currency },
-    ] as ExpenseItem[];
-    const result = computeCategoryTotals(expenses, RATES);
-    expect(result['交通']).toBeCloseTo(100 + 1 / 0.14, 2);
   });
 });

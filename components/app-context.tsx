@@ -1,9 +1,8 @@
 import { createContext, useCallback, useContext, useMemo } from 'react';
 
-import { type Currency, type DailyBudget, type ExpenseCategory, type ExpenseItem, type ExpensesMap, type Trip } from '@/types/expense';
+import { type DailyBudget, type ExpenseCategory, type ExpenseItem, type ExpensesMap, type Trip } from '@/types/expense';
 import { useExpenses } from '@/hooks/use-expenses';
 import { useTrips } from '@/hooks/use-trips';
-import { useExchangeRates } from '@/hooks/use-exchange-rates';
 import { useBudget } from '@/hooks/use-budget';
 
 // ── 费用 Context ──────────────────────────────────────────────
@@ -14,10 +13,10 @@ type ExpensesContextType = {
   removeExpense: (dateKey: string, id: string) => void;
   removeByTrip: (tripId: string) => void;
   hasRecords: (dateKey: string) => boolean;
-  getDailyTotal: (dateKey: string, rates: Record<Currency, number>) => number;
+  getDailyTotal: (dateKey: string) => number;
   getByTrip: (tripId: string) => ExpenseItem[];
   getByDateRange: (startDate: string, endDate: string) => ExpenseItem[];
-  getMonthlyTotal: (year: number, month: number, rates: Record<Currency, number>) => { total: number; count: number };
+  getMonthlyTotal: (year: number, month: number) => { total: number; count: number };
   getMonthExpenses: (year: number, month: number) => ExpenseItem[];
   searchExpenses: (query: string, category: ExpenseCategory | null) => { dateKey: string; item: ExpenseItem }[];
   importAll: (data: ExpensesMap) => void;
@@ -53,7 +52,7 @@ export function useExpensesContext() {
   return ctx;
 }
 
-// ── 行程 + 汇率 Context ──────────────────────────────────────
+// ── 行程 Context ──────────────────────────────────────────────
 type TripsContextType = {
   trips: Trip[];
   addTrip: (trip: Omit<Trip, 'id' | 'createdAt'>) => string;
@@ -64,16 +63,12 @@ type TripsContextType = {
   getTripsInMonth: (year: number, month: number) => Trip[];
   importAll: (data: Record<string, Trip>) => void;
   loaded: boolean;
-  convert: (amount: number, from: Currency) => number;
-  rates: Record<Currency, number>;
 };
 
 const TripsContext = createContext<TripsContextType | null>(null);
 
 function TripsProvider({ children }: { children: React.ReactNode }) {
   const tripsHook = useTrips();
-  const exchangeRates = useExchangeRates();
-  const rates = exchangeRates.rates.rates;
 
   const value = useMemo(() => ({
     trips: tripsHook.getAll(),
@@ -85,9 +80,7 @@ function TripsProvider({ children }: { children: React.ReactNode }) {
     getTripsInMonth: tripsHook.getTripsInMonth,
     importAll: tripsHook.importAll,
     loaded: tripsHook.loaded,
-    convert: exchangeRates.convert,
-    rates,
-  }), [tripsHook, exchangeRates, rates]);
+  }), [tripsHook]);
 
   return <TripsContext.Provider value={value}>{children}</TripsContext.Provider>;
 }
@@ -149,9 +142,6 @@ type AppContextType = {
   getTripById: (id: string) => Trip | null;
   getActiveTrip: (dateKey: string) => Trip | null;
   getTripsInMonth: (year: number, month: number) => Trip[];
-  // 汇率
-  convert: (amount: number, from: Currency) => number;
-  rates: Record<Currency, number>;
   // 预算
   budget: DailyBudget;
   updateBudget: (updates: Partial<DailyBudget>) => void;
@@ -185,10 +175,10 @@ function AppBridge({ children }: { children: React.ReactNode }) {
     updateExpense: expenses.updateExpense,
     removeExpense: expenses.removeExpense,
     hasRecords: expenses.hasRecords,
-    getDailyTotal: (dateKey: string) => expenses.getDailyTotal(dateKey, tripsCtx.rates),
+    getDailyTotal: expenses.getDailyTotal,
     getByTrip: expenses.getByTrip,
     getByDateRange: expenses.getByDateRange,
-    getMonthlyTotal: (year: number, month: number) => expenses.getMonthlyTotal(year, month, tripsCtx.rates),
+    getMonthlyTotal: expenses.getMonthlyTotal,
     getMonthExpenses: expenses.getMonthExpenses,
     searchExpenses: expenses.searchExpenses,
     trips: tripsCtx.trips,
@@ -198,8 +188,6 @@ function AppBridge({ children }: { children: React.ReactNode }) {
     getTripById: tripsCtx.getTripById,
     getActiveTrip: tripsCtx.getActiveTrip,
     getTripsInMonth: tripsCtx.getTripsInMonth,
-    convert: tripsCtx.convert,
-    rates: tripsCtx.rates,
     budget: budgetCtx.budget,
     updateBudget: budgetCtx.updateBudget,
     getDayBudget: budgetCtx.getDayBudget,
