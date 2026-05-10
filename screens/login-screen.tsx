@@ -11,7 +11,8 @@ import {
   Platform,
 } from 'react-native';
 import { useAuth } from '../context/auth-context';
-import { DESIGN_TOKENS } from '@/constants/design-tokens';
+import { Spacing, BorderRadius, FontSize, FontWeight } from '@/constants/design-tokens';
+import { Colors } from '@/constants/theme';
 
 export function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -106,12 +107,12 @@ export function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: DESIGN_TOKENS.colors.background,
+    backgroundColor: '#F8F9FA',
   },
   content: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: Spacing.xxl,
   },
   header: {
     alignItems: 'center',
@@ -119,46 +120,46 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 36,
-    fontWeight: '700',
-    color: DESIGN_TOKENS.colors.primary,
-    marginBottom: 8,
+    fontWeight: FontWeight.bold,
+    color: Colors.light.tint,
+    marginBottom: Spacing.sm,
   },
   subtitle: {
-    fontSize: 16,
-    color: DESIGN_TOKENS.colors.textSecondary,
+    fontSize: FontSize.lg,
+    color: '#6B7280',
   },
   form: {
-    gap: 16,
+    gap: Spacing.lg,
   },
   input: {
-    backgroundColor: DESIGN_TOKENS.colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    fontSize: FontSize.lg,
     borderWidth: 1,
-    borderColor: DESIGN_TOKENS.colors.border,
+    borderColor: '#E5E7EB',
   },
   button: {
-    backgroundColor: DESIGN_TOKENS.colors.primary,
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: Colors.light.tint,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: Spacing.sm,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.semibold,
   },
   linkButton: {
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: Spacing.lg,
   },
   linkText: {
-    color: DESIGN_TOKENS.colors.primary,
-    fontSize: 14,
+    color: Colors.light.tint,
+    fontSize: FontSize.md,
   },
 });

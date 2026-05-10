@@ -9,7 +9,8 @@ import {
 } from 'react-native';
 import { useAuth } from '@/context/auth-context';
 import { SyncButton } from '@/components/sync-button';
-import { DESIGN_TOKENS } from '@/constants/design-tokens';
+import { Spacing, BorderRadius, FontSize, FontWeight } from '@/constants/design-tokens';
+import { Colors } from '@/constants/theme';
 
 export default function SettingsScreen() {
   const { user, signOut } = useAuth();
@@ -82,34 +83,34 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: DESIGN_TOKENS.colors.background,
+    backgroundColor: '#F8F9FA',
   },
   header: {
     paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingHorizontal: Spacing.xl,
+    paddingBottom: Spacing.xl,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: DESIGN_TOKENS.colors.text,
+    fontSize: FontSize.display,
+    fontWeight: FontWeight.bold,
+    color: '#1F2937',
   },
   section: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
+    paddingHorizontal: Spacing.xl,
+    marginBottom: Spacing.xxl,
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: DESIGN_TOKENS.colors.textSecondary,
-    marginBottom: 12,
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+    color: '#6B7280',
+    marginBottom: Spacing.lg,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   card: {
-    backgroundColor: DESIGN_TOKENS.colors.surface,
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.lg,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -120,45 +121,45 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: Spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: DESIGN_TOKENS.colors.border,
+    borderBottomColor: '#E5E7EB',
   },
   label: {
-    fontSize: 15,
-    color: DESIGN_TOKENS.colors.textSecondary,
+    fontSize: FontSize.lg,
+    color: '#6B7280',
   },
   value: {
-    fontSize: 15,
-    color: DESIGN_TOKENS.colors.text,
-    fontWeight: '500',
+    fontSize: FontSize.lg,
+    color: '#1F2937',
+    fontWeight: FontWeight.medium,
     maxWidth: '60%',
   },
   syncDescription: {
-    fontSize: 14,
-    color: DESIGN_TOKENS.colors.textSecondary,
-    marginBottom: 16,
+    fontSize: FontSize.md,
+    color: '#6B7280',
+    marginBottom: Spacing.lg,
     lineHeight: 20,
   },
   signOutButton: {
     backgroundColor: '#FEF2F2',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#FECACA',
   },
   signOutText: {
     color: '#EF4444',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.semibold,
   },
   footer: {
     alignItems: 'center',
-    paddingVertical: 32,
+    paddingVertical: Spacing.xxl,
   },
   footerText: {
-    fontSize: 12,
-    color: DESIGN_TOKENS.colors.textSecondary,
+    fontSize: FontSize.sm,
+    color: '#9CA3AF',
   },
 });

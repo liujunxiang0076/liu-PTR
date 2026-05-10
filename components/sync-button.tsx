@@ -9,7 +9,8 @@ import {
 } from 'react-native';
 import { useSupabaseSync } from '../hooks/use-supabase-sync';
 import { useAuth } from '../context/auth-context';
-import { DESIGN_TOKENS } from '@/constants/design-tokens';
+import { Spacing, BorderRadius, FontSize, FontWeight } from '@/constants/design-tokens';
+import { Colors } from '@/constants/theme';
 
 export function SyncButton() {
   const { user } = useAuth();
@@ -81,13 +82,13 @@ export function SyncButton() {
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    padding: 16,
+    padding: Spacing.lg,
   },
   button: {
-    backgroundColor: DESIGN_TOKENS.colors.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
+    backgroundColor: Colors.light.tint,
+    borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing.lg + 2,
+    paddingHorizontal: Spacing.xxl,
     minWidth: 200,
     alignItems: 'center',
   },
@@ -104,24 +105,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: Spacing.sm,
   },
   icon: {
-    fontSize: 18,
+    fontSize: FontSize.xl,
   },
   buttonText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.semibold,
   },
   timeText: {
-    marginTop: 8,
-    fontSize: 12,
-    color: DESIGN_TOKENS.colors.textSecondary,
+    marginTop: Spacing.sm,
+    fontSize: FontSize.sm,
+    color: '#9CA3AF',
   },
   errorText: {
-    marginTop: 4,
-    fontSize: 12,
+    marginTop: Spacing.xs,
+    fontSize: FontSize.sm,
     color: '#EF4444',
   },
 });
