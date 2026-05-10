@@ -8,7 +8,6 @@ import { BudgetSettingsModal } from '@/components/budget-settings-modal';
 import { BackupModal } from '@/components/backup-modal';
 import { SearchModal } from '@/components/search-modal';
 import { useAppContext } from '@/components/app-context';
-import { useHolidaySync } from '@/hooks/use-holiday-sync';
 
 export default function HomeScreen() {
   const [panel, setPanel] = useState<{
@@ -23,7 +22,6 @@ export default function HomeScreen() {
   const [searchVisible, setSearchVisible] = useState(false);
 
   const { getDailyTotal, getDayBudget } = useAppContext();
-  useHolidaySync();
 
   const handleDayPress = useCallback(
     (dateKey: string, year: number, month: number, day: number) => {
@@ -32,19 +30,43 @@ export default function HomeScreen() {
     []
   );
 
-  const handleClose = useCallback(() => {
-    setPanel((p) => ({ ...p, visible: false }));
+  const handleClosePanel = useCallback(() => {
+    setPanel((prev) => ({ ...prev, visible: false }));
+  }, []);
+
+  const handleOpenSettings = useCallback(() => {
+    setSettingsVisible(true);
+  }, []);
+
+  const handleCloseSettings = useCallback(() => {
+    setSettingsVisible(false);
+  }, []);
+
+  const handleOpenBackup = useCallback(() => {
+    setBackupVisible(true);
+  }, []);
+
+  const handleCloseBackup = useCallback(() => {
+    setBackupVisible(false);
+  }, []);
+
+  const handleOpenSearch = useCallback(() => {
+    setSearchVisible(true);
+  }, []);
+
+  const handleCloseSearch = useCallback(() => {
+    setSearchVisible(false);
   }, []);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container}>
       <Calendar
         onDayPress={handleDayPress}
         getDailyTotal={getDailyTotal}
         getDayBudget={getDayBudget}
-        onSettingsPress={() => setSettingsVisible(true)}
-        onBackupPress={() => setBackupVisible(true)}
-        onSearchPress={() => setSearchVisible(true)}
+        onOpenSettings={handleOpenSettings}
+        onOpenBackup={handleOpenBackup}
+        onOpenSearch={handleOpenSearch}
       />
       <DayDetailPanel
         visible={panel.visible}
@@ -52,19 +74,19 @@ export default function HomeScreen() {
         year={panel.year}
         month={panel.month}
         day={panel.day}
-        onClose={handleClose}
+        onClose={handleClosePanel}
       />
       <BudgetSettingsModal
         visible={settingsVisible}
-        onClose={() => setSettingsVisible(false)}
+        onClose={handleCloseSettings}
       />
       <BackupModal
         visible={backupVisible}
-        onClose={() => setBackupVisible(false)}
+        onClose={handleCloseBackup}
       />
       <SearchModal
         visible={searchVisible}
-        onClose={() => setSearchVisible(false)}
+        onClose={handleCloseSearch}
       />
     </SafeAreaView>
   );
@@ -73,6 +95,5 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 12,
   },
 });

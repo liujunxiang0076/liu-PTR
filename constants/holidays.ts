@@ -1,268 +1,179 @@
 /**
- * 中国节假日与二十四节气数据
- * 格式: "MM-DD": "名称"
+ * 中国节假日、调休日、工作日、24节气、农历数据
+ * 数据来源：chinese-days（自动更新，跟随国务院发布）
  */
+import {
+  isHoliday,
+  isInLieu,
+  isWorkday,
+  getDayDetail,
+  getSolarTerms,
+  getLunarDate,
+  getLunarFestivals,
+} from 'chinese-days';
+import type { SolarTerm } from 'chinese-days';
 
-/** 固定公历节日 */
-const FIXED_HOLIDAYS: Record<string, string> = {
-  '01-01': '元旦',
-  '02-14': '情人节',
-  '03-08': '妇女节',
-  '03-12': '植树节',
-  '04-01': '愚人节',
-  '05-01': '劳动节',
-  '05-04': '青年节',
-  '06-01': '儿童节',
-  '07-01': '建党节',
-  '08-01': '建军节',
-  '09-10': '教师节',
-  '10-01': '国庆节',
-  '10-31': '万圣节',
-  '12-24': '平安夜',
-  '12-25': '圣诞节',
+/** 日期详情 */
+export type DayDetail = {
+  /** 是否节假日 */
+  isHoliday: boolean;
+  /** 是否调休日（补班） */
+  isInLieu: boolean;
+  /** 是否工作日 */
+  isWorkday: boolean;
+  /** 节假日/节日名称 */
+  holidayName: string | null;
+  /** 农历日期 */
+  lunarDate: string;
+  /** 农历节日 */
+  lunarFestival: string | null;
+  /** 24节气 */
+  solarTerm: string | null;
 };
-
-/** 二十四节气（按年份缓存，这里提供近3年的参考日期） */
-const SOLAR_TERMS_BY_YEAR: Record<string, Record<string, string>> = {
-  '2025': {
-    '01-05': '小寒', '01-20': '大寒',
-    '02-03': '立春', '02-18': '雨水',
-    '03-05': '惊蛰', '03-20': '春分',
-    '04-04': '清明', '04-20': '谷雨',
-    '05-05': '立夏', '05-21': '小满',
-    '06-05': '芒种', '06-21': '夏至',
-    '07-07': '小暑', '07-22': '大暑',
-    '08-07': '立秋', '08-23': '处暑',
-    '09-07': '白露', '09-22': '秋分',
-    '10-08': '寒露', '10-23': '霜降',
-    '11-07': '立冬', '11-22': '小雪',
-    '12-07': '大雪', '12-22': '冬至',
-  },
-  '2026': {
-    '01-05': '小寒', '01-20': '大寒',
-    '02-03': '立春', '02-18': '雨水',
-    '03-05': '惊蛰', '03-20': '春分',
-    '04-04': '清明', '04-20': '谷雨',
-    '05-05': '立夏', '05-21': '小满',
-    '06-05': '芒种', '06-21': '夏至',
-    '07-07': '小暑', '07-22': '大暑',
-    '08-07': '立秋', '08-23': '处暑',
-    '09-07': '白露', '09-23': '秋分',
-    '10-08': '寒露', '10-23': '霜降',
-    '11-07': '立冬', '11-22': '小雪',
-    '12-07': '大雪', '12-22': '冬至',
-  },
-  '2027': {
-    '01-05': '小寒', '01-20': '大寒',
-    '02-03': '立春', '02-18': '雨水',
-    '03-05': '惊蛰', '03-20': '春分',
-    '04-05': '清明', '04-20': '谷雨',
-    '05-05': '立夏', '05-21': '小满',
-    '06-05': '芒种', '06-21': '夏至',
-    '07-07': '小暑', '07-23': '大暑',
-    '08-07': '立秋', '08-23': '处暑',
-    '09-07': '白露', '09-23': '秋分',
-    '10-08': '寒露', '10-23': '霜降',
-    '11-07': '立冬', '11-22': '小雪',
-    '12-07': '大雪', '12-22': '冬至',
-  },
-};
-
-/** 农历节日（近似值，按公历日期标记） */
-const LUNAR_HOLIDAYS: Record<string, Record<string, string>> = {
-  '2025': {
-    '01-29': '春节', '02-12': '元宵节',
-    '05-31': '端午节', '06-01': '儿童节',
-    '08-29': '七夕', '09-06': '中元节',
-    '10-06': '中秋节',
-    '12-21': '腊八节',
-  },
-  '2026': {
-    '02-17': '春节', '03-03': '元宵节',
-    '05-19': '端午节',
-    '08-18': '七夕', '08-25': '中元节',
-    '09-25': '中秋节',
-    '12-10': '腊八节',
-  },
-  '2027': {
-    '02-06': '春节', '02-20': '元宵节',
-    '06-08': '端午节',
-    '08-07': '七夕', '08-14': '中元节',
-    '10-15': '中秋节',
-    '12-30': '腊八节',
-  },
-};
-
-/**
- * 获取指定日期的节假日名称
- * @param year 年
- * @param month 月（0-based）
- * @param day 日
- * @returns 节日名称，无节日返回 null
- */
-export function getHoliday(year: number, month: number, day: number): string | null {
-  const mm = String(month + 1).padStart(2, '0');
-  const dd = String(day).padStart(2, '0');
-  const key = `${mm}-${dd}`;
-  const yearStr = String(year);
-
-  // 公历节日优先
-  if (FIXED_HOLIDAYS[key]) {
-    return FIXED_HOLIDAYS[key];
-  }
-
-  // 农历节日
-  const lunar = LUNAR_HOLIDAYS[yearStr];
-  if (lunar && lunar[key]) {
-    return lunar[key];
-  }
-
-  // 二十四节气
-  const terms = SOLAR_TERMS_BY_YEAR[yearStr];
-  if (terms && terms[key]) {
-    return terms[key];
-  }
-
-  return null;
-}
-
-/**
- * 周末（周六/周日）判断
- */
-export function isWeekend(year: number, month: number, day: number): boolean {
-  const date = new Date(year, month, day);
-  const dow = date.getDay();
-  return dow === 0 || dow === 6;
-}
-
-// ———————————————————— 调休与放假数据 ————————————————————
-
-/**
- * 法定休息日集合（YYYY-MM-DD）
- * 包含：法定节假日放假 + 调休补假的周末
- * 不包含：普通周末（由 isWeekend 判断）
- */
-const REST_DAYS: Record<string, Set<string>> = {
-  '2025': new Set([
-    // 元旦
-    '2025-01-01',
-    // 春节 1.28-2.4
-    '2025-01-28','2025-01-29','2025-01-30','2025-01-31',
-    '2025-02-01','2025-02-02','2025-02-03','2025-02-04',
-    // 清明 4.4-4.6
-    '2025-04-04','2025-04-05','2025-04-06',
-    // 劳动节 5.1-5.5
-    '2025-05-01','2025-05-02','2025-05-03','2025-05-04','2025-05-05',
-    // 端午 5.31-6.2
-    '2025-05-31','2025-06-01','2025-06-02',
-    // 中秋+国庆 10.1-10.8
-    '2025-10-01','2025-10-02','2025-10-03','2025-10-04',
-    '2025-10-05','2025-10-06','2025-10-07','2025-10-08',
-  ]),
-  '2026': new Set([
-    // 元旦
-    '2026-01-01','2026-01-02','2026-01-03',
-    // 春节 2.15-2.21（含调休周末2.14,2.22上班）
-    '2026-02-15','2026-02-16','2026-02-17',
-    '2026-02-18','2026-02-19','2026-02-20','2026-02-21',
-    // 清明 4.4-4.6
-    '2026-04-04','2026-04-05','2026-04-06',
-    // 劳动节 5.1-5.5（含调休周末4.26,5.9上班）
-    '2026-05-01','2026-05-02','2026-05-03',
-    '2026-05-04','2026-05-05',
-    // 端午 5.31-6.2
-    '2026-05-31','2026-06-01','2026-06-02',
-    // 中秋+国庆 10.1-10.7（含调休周末9.27,10.10上班）
-    '2026-10-01','2026-10-02','2026-10-03',
-    '2026-10-04','2026-10-05','2026-10-06','2026-10-07',
-  ]),
-  '2027': new Set([
-    // 元旦
-    '2027-01-01','2027-01-02','2027-01-03',
-    // 春节 2.6-2.12
-    '2027-02-06','2027-02-07','2027-02-08',
-    '2027-02-09','2027-02-10','2027-02-11','2027-02-12',
-    // 清明 4.5-4.7
-    '2027-04-05','2027-04-06','2027-04-07',
-    // 劳动节 5.1-5.5
-    '2027-05-01','2027-05-02','2027-05-03',
-    '2027-05-04','2027-05-05',
-    // 端午 6.14-6.16
-    '2027-06-14','2027-06-15','2027-06-16',
-    // 中秋+国庆 10.1-10.7
-    '2027-10-01','2027-10-02','2027-10-03',
-    '2027-10-04','2027-10-05','2027-10-06','2027-10-07',
-  ]),
-};
-
-/**
- * 调休上班日集合（本应休息的周末被调为工作日）
- */
-const MAKEUP_WORKDAYS: Record<string, Set<string>> = {
-  '2025': new Set([
-    '2025-01-26', // 春节调休
-    '2025-02-08', // 春节调休
-    '2025-04-27', // 劳动节调休
-    '2025-09-28', // 国庆调休
-    '2025-10-11', // 国庆调休
-  ]),
-  '2026': new Set([
-    '2026-02-14', // 春节调休
-    '2026-02-22', // 春节调休
-    '2026-04-26', // 劳动节调休
-    '2026-05-09', // 劳动节调休
-    '2026-09-27', // 国庆调休
-    '2026-10-10', // 国庆调休
-  ]),
-  '2027': new Set([
-    // 2027年调休待公布
-  ]),
-};
-
-/** 从 API 获取的休/班数据（运行时填充，优先级高于硬编码数据） */
-let apiRestDays: Record<string, Set<string>> = {};
-let apiMakeupWorkdays: Record<string, Set<string>> = {};
-
-/** 将 API 返回的 days 数组写入内存 */
-export function setApiHolidayData(
-  year: number,
-  days: { date: string; isOffDay: boolean }[],
-) {
-  const y = String(year);
-  const rest = new Set<string>();
-  const makeup = new Set<string>();
-  for (const d of days) {
-    if (d.isOffDay) rest.add(d.date);
-    else makeup.add(d.date);
-  }
-  apiRestDays[y] = rest;
-  apiMakeupWorkdays[y] = makeup;
-}
 
 /** 休息日标记类型 */
 export type RestDayBadge = '休' | '班' | null;
 
 /**
- * 判断某天是否需要显示"休"或"班"角标
- * - 属于法定假日安排 → "休"（含假期内的周末，标记整个假期区间）
- * - 周末被调为上班 → "班"
+ * 解析节假日名称
+ * 格式：English,中文,天数 或 英文星期几
+ * 只有包含逗号的才是真正的节假日
+ */
+function parseHolidayName(name: string): string | null {
+  if (!name) return null;
+  const parts = name.split(',');
+  // 包含逗号且有中文部分才是节假日
+  if (parts.length > 1 && parts[1]) {
+    return parts[1];
+  }
+  // 没有逗号的是普通星期几，返回 null
+  return null;
+}
+
+/**
+ * 获取指定日期的完整信息
+ * @param year 年
+ * @param month 月（0-based）
+ * @param day 日
+ */
+export function getDayInfo(year: number, month: number, day: number): DayDetail {
+  const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+  // 获取日期详情
+  const detail = getDayDetail(dateStr);
+
+  // 解析节假日名称
+  const holidayName = parseHolidayName(detail.name);
+
+  // 获取农历信息
+  let lunarDate = '';
+  let lunarFestival: string | null = null;
+  try {
+    const lunar = getLunarDate(dateStr);
+    lunarDate = lunar.lunarDayCN || '';
+
+    // 获取农历节日
+    const festivals = getLunarFestivals(dateStr);
+    lunarFestival = festivals.length > 0 ? festivals[0].name[0] : null;
+  } catch {
+    // 农历获取失败不影响其他功能
+  }
+
+  // 获取24节气
+  let solarTerm: string | null = null;
+  try {
+    const terms: SolarTerm[] = getSolarTerms(dateStr);
+    if (terms.length > 0) {
+      solarTerm = terms[0].name;
+    }
+  } catch {
+    // 节气获取失败不影响其他功能
+  }
+
+  return {
+    isHoliday: !detail.work && holidayName !== null,
+    isInLieu: isInLieu(dateStr),
+    isWorkday: detail.work,
+    holidayName,
+    lunarDate,
+    lunarFestival,
+    solarTerm,
+  };
+}
+
+/**
+ * 获取节假日名称（兼容旧 API）
+ * @param year 年
+ * @param month 月（0-based）
+ * @param day 日
+ */
+export function getHoliday(year: number, month: number, day: number): string | null {
+  const info = getDayInfo(year, month, day);
+  return info.holidayName;
+}
+
+/**
+ * 获取休息日标记（兼容旧 API）
+ * 返回 '休' 表示节假日，'班' 表示调休上班，null 表示普通日
  */
 export function getRestDayBadge(year: number, month: number, day: number): RestDayBadge {
-  const mm = String(month + 1).padStart(2, '0');
-  const dd = String(day).padStart(2, '0');
-  const dateKey = `${year}-${mm}-${dd}`;
-  const yearStr = String(year);
-  const weekend = isWeekend(year, month, day);
-
-  // 周末被调为上班（优先级高于放假）
-  if (weekend && (MAKEUP_WORKDAYS[yearStr]?.has(dateKey) || apiMakeupWorkdays[yearStr]?.has(dateKey))) {
-    return '班';
-  }
-
-  // 法定假日安排内所有日期标"休"（含工作日放假 + 假期内的周末）
-  if (REST_DAYS[yearStr]?.has(dateKey) || apiRestDays[yearStr]?.has(dateKey)) {
-    return '休';
-  }
-
+  const info = getDayInfo(year, month, day);
+  if (info.isHoliday) return '休';
+  if (info.isInLieu) return '班';
   return null;
+}
+
+/**
+ * 获取农历显示文本（兼容旧 API）
+ */
+export function getLunarText(year: number, month: number, day: number): string {
+  const info = getDayInfo(year, month, day);
+
+  // 优先显示：节气 > 农历节日 > 农历日期
+  if (info.solarTerm) return info.solarTerm;
+  if (info.lunarFestival) return info.lunarFestival;
+  if (info.lunarDate) return info.lunarDate;
+
+  return '';
+}
+
+/**
+ * 判断是否是工作日
+ */
+export function isDayWorkday(year: number, month: number, day: number): boolean {
+  const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  return isWorkday(dateStr);
+}
+
+/**
+ * 判断是否是节假日
+ */
+export function isDayHoliday(year: number, month: number, day: number): boolean {
+  const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  return isHoliday(dateStr);
+}
+
+/**
+ * 判断是否是调休日
+ */
+export function isDayInLieu(year: number, month: number, day: number): boolean {
+  const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  return isInLieu(dateStr);
+}
+
+/**
+ * 判断是否是周末（周六或周日）
+ */
+export function isWeekend(year: number, month: number, day: number): boolean {
+  const date = new Date(year, month, day);
+  const dayOfWeek = date.getDay();
+  return dayOfWeek === 0 || dayOfWeek === 6;
+}
+
+/**
+ * 设置 API 节假日数据（兼容旧 API，现在不再需要）
+ * 数据已由 chinese-days 自动管理
+ */
+export function setApiHolidayData(..._args: unknown[]): void {
+  // 不再需要手动设置，数据由 chinese-days 自动管理
 }
