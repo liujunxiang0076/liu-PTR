@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useAuth } from '@/context/auth-context';
 import { SyncButton } from '@/components/sync-button';
-import { DESIGN_TOKENS } from '@/styles/design-tokens';
+import { DESIGN_TOKENS } from '@/constants/design-tokens';
 
 export default function SettingsScreen() {
   const { user, signOut } = useAuth();

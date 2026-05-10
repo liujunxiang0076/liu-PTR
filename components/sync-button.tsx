@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useSupabaseSync } from '../hooks/use-supabase-sync';
 import { useAuth } from '../context/auth-context';
-import { DESIGN_TOKENS } from '../styles/design-tokens';
+import { DESIGN_TOKENS } from '@/constants/design-tokens';
 
 export function SyncButton() {
   const { user } = useAuth();
