@@ -70,6 +70,22 @@ jobs:
       - name: Export web
         run: npx expo export --platform web
 
+      - name: Fix asset paths for subdirectory deployment
+        run: |
+          for f in dist/**/*.html dist/*.html; do
+            [ -f "$f" ] || continue
+            sed -i 's|src="/_expo/|src="/liu-PTR/_expo/|g' "$f"
+            sed -i 's|href="/_expo/|href="/liu-PTR/_expo/|g' "$f"
+            sed -i 's|href="/assets/|href="/liu-PTR/assets/|g' "$f"
+            sed -i 's|src="/assets/|src="/liu-PTR/assets/|g' "$f"
+            sed -i 's|href="/favicon|href="/liu-PTR/favicon|g' "$f"
+          done
+          for f in dist/_expo/static/js/web/*.js; do
+            [ -f "$f" ] || continue
+            sed -i 's|"/assets/|"/liu-PTR/assets/|g' "$f"
+          done
+          echo "✅ Asset paths fixed"
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
