@@ -15,7 +15,7 @@ export const unstable_settings = {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  const { session, loading } = useAuth();
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -25,7 +25,7 @@ function RootLayoutNav() {
     );
   }
 
-  if (!session) {
+  if (!user) {
     return <LoginScreen />;
   }
 
