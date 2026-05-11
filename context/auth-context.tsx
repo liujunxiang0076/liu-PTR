@@ -10,6 +10,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  error: string | null;
   signIn: (username: string, password: string) => Promise<{ error: any }>;
   signUp: (username: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -26,7 +27,6 @@ async function hashPassword(password: string): Promise<string> {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   } catch (e) {
-    // 如果 crypto.subtle 不可用，使用简单哈希
     let hash = 0;
     const str = password + 'liu-ptr-salt';
     for (let i = 0; i < str.length; i++) {
@@ -41,14 +41,14 @@ async function hashPassword(password: string): Promise<string> {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // 添加超时，确保 loading 不会一直为 true
     const timeout = setTimeout(() => {
       setLoading(false);
-    }, 3000);
+      setError('加载超时，请检查网络连接');
+    }, 5000);
 
-    // 从本地存储恢复登录状态
     AsyncStorage.getItem('liu-ptr-user')
       .then((userData) => {
         if (userData) {
@@ -61,6 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       .catch((err) => {
         console.warn('AsyncStorage 读取失败:', err);
+        setError('本地存储读取失败: ' + err.message);
       })
       .finally(() => {
         clearTimeout(timeout);
@@ -72,17 +73,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (username: string, password: string) => {
     try {
+      setError(null);
       const passwordHash = await hashPassword(password);
 
-      const { data, error } = await supabase
+      const { data, error: dbError } = await supabase
         .from('users')
         .select('id, username')
         .eq('username', username)
         .eq('password_hash', passwordHash)
         .single();
 
-      if (error || !data) {
-        return { error: { message: '用户名或密码错误' } };
+      if (dbError || !data) {
+        const msg = dbError?.message || '用户名或密码错误';
+        return { error: { message: msg } };
       }
 
       const userData = { id: data.id, username: data.username };
@@ -91,13 +94,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return { error: null };
     } catch (err: any) {
-      return { error: { message: err.message || '登录失败，请检查网络' } };
+      const msg = err.message || '登录失败，请检查网络';
+      setError(msg);
+      return { error: { message: msg } };
     }
   };
 
   const signUp = async (username: string, password: string) => {
     try {
-      // 检查用户名是否已存在
+      setError(null);
       const { data: existing } = await supabase
         .from('users')
         .select('id')
@@ -110,15 +115,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const passwordHash = await hashPassword(password);
 
-      // 创建新用户
-      const { data, error } = await supabase
+      const { data, error: dbError } = await supabase
         .from('users')
         .insert({ username, password_hash: passwordHash })
         .select('id, username')
         .single();
 
-      if (error) {
-        return { error: { message: '注册失败：' + error.message } };
+      if (dbError) {
+        return { error: { message: '注册失败：' + dbError.message } };
       }
 
       const userData = { id: data.id, username: data.username };
@@ -127,7 +131,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return { error: null };
     } catch (err: any) {
-      return { error: { message: err.message || '注册失败，请检查网络' } };
+      const msg = err.message || '注册失败，请检查网络';
+      setError(msg);
+      return { error: { message: msg } };
     }
   };
 
@@ -139,6 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = {
     user,
     loading,
+    error,
     signIn,
     signUp,
     signOut,
