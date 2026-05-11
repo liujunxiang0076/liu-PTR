@@ -68,7 +68,20 @@ jobs:
         run: npm ci
 
       - name: Export web
-        run: npx expo export --platform web --public-url /liu-PTR/web
+        run: npx expo export --platform web
+
+      - name: Fix asset paths for subdirectory deployment
+        run: |
+          # 将 HTML 中的绝对路径改为带前缀的路径
+          for f in dist/**/*.html dist/*.html; do
+            [ -f "$f" ] || continue
+            sed -i 's|src="/_expo/|src="/liu-PTR/web/_expo/|g' "$f"
+            sed -i 's|href="/_expo/|href="/liu-PTR/web/_expo/|g' "$f"
+            sed -i 's|href="/assets/|href="/liu-PTR/web/assets/|g' "$f"
+            sed -i 's|src="/assets/|src="/liu-PTR/web/assets/|g' "$f"
+            sed -i 's|href="/favicon|href="/liu-PTR/web/favicon|g' "$f"
+          done
+          echo "✅ Asset paths fixed"
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
