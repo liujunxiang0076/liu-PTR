@@ -68,7 +68,7 @@ jobs:
         run: npm ci
 
       - name: Export web
-        run: npx expo export --platform web
+        run: npx expo export --platform web --public-url /liu-PTR/web
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
