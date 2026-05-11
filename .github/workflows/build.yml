@@ -82,6 +82,8 @@ jobs:
             sed -i "s|href=\"/assets/|href=\"${BASE}/assets/|g" "$f"
             sed -i "s|src=\"/assets/|src=\"${BASE}/assets/|g" "$f"
             sed -i "s|href=\"/favicon|href=\"${BASE}/favicon|g" "$f"
+            # 在路由初始化前修正 URL，让路由以为在根目录
+            sed -i "s|<head>|<head><script>var b='${BASE}';if(location.pathname.startsWith(b+'/')){history.replaceState(null,'',location.pathname.slice(b.length)+location.search+location.hash)}else if(location.pathname===b){history.replaceState(null,'/',location.search+location.hash)}</script>|" "$f"
           done
           
           # 修正 JS 中的资源路径
@@ -89,7 +91,7 @@ jobs:
             [ -f "$f" ] || continue
             sed -i "s|\"/assets/|\"${BASE}/assets/|g" "$f"
           done
-          echo "✅ Paths fixed"
+          echo "✅ Paths fixed with URL rewrite script"
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
