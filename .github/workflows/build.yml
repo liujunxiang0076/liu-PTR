@@ -70,30 +70,11 @@ jobs:
       - name: Export web
         run: npx expo export --platform web
 
-      - name: Fix asset paths for subdirectory deployment
-        run: |
-          # 将 HTML 中的绝对路径改为带前缀的路径
-          for f in dist/**/*.html dist/*.html; do
-            [ -f "$f" ] || continue
-            sed -i 's|src="/_expo/|src="/liu-PTR/web/_expo/|g' "$f"
-            sed -i 's|href="/_expo/|href="/liu-PTR/web/_expo/|g' "$f"
-            sed -i 's|href="/assets/|href="/liu-PTR/web/assets/|g' "$f"
-            sed -i 's|src="/assets/|src="/liu-PTR/web/assets/|g' "$f"
-            sed -i 's|href="/favicon|href="/liu-PTR/web/favicon|g' "$f"
-          done
-          # 修复 JS 中的资源路径
-          for f in dist/_expo/static/js/web/*.js; do
-            [ -f "$f" ] || continue
-            sed -i 's|"/assets/|"/liu-PTR/web/assets/|g' "$f"
-          done
-          echo "✅ Asset paths fixed"
-
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
-          destination_dir: web
 
   # ── Android APK 构建 ─────────────────────────────────
   build-android:
