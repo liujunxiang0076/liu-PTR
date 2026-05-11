@@ -25,7 +25,7 @@
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png",
-      "baseUrl": "/liu-PTR"
+      "baseUrl": "/liu-PTR/web"
     },
     "plugins": [
       "expo-router",
