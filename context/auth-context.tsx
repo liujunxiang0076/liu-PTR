@@ -1,13 +1,17 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Session, User } from '@supabase/supabase-js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+interface User {
+  id: string;
+  username: string;
+}
 
 interface AuthContextType {
-  session: Session | null;
   user: User | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string) => Promise<{ error: any }>;
+  signIn: (username: string, password: string) => Promise<{ error: any }>;
+  signUp: (username: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
 
@@ -23,64 +27,111 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   ]);
 }
 
+// 简单密码哈希（个人使用足够）
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password + 'liu-ptr-salt');
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 获取初始会话，带超时
-    withTimeout(supabase.auth.getSession(), 10000)
-      .then(({ data: { session } }) => {
-        setSession(session);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.warn('获取会话超时或失败:', err.message);
-        // 超时后也停止 loading，显示登录页面
-        setLoading(false);
-      });
-
-    // 监听登录状态变化
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+    // 从本地存储恢复登录状态
+    AsyncStorage.getItem('liu-ptr-user').then((userData) => {
+      if (userData) {
+        try {
+          setUser(JSON.parse(userData));
+        } catch (e) {
+          // 解析失败，清除
+          AsyncStorage.removeItem('liu-ptr-user');
+        }
+      }
+      setLoading(false);
     });
-
-    return () => subscription.unsubscribe();
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (username: string, password: string) => {
     try {
-      const { error } = await withTimeout(
-        supabase.auth.signInWithPassword({ email, password }),
-        15000
+      const passwordHash = await hashPassword(password);
+
+      const { data, error } = await withTimeout(
+        supabase
+          .from('users')
+          .select('id, username')
+          .eq('username', username)
+          .eq('password_hash', passwordHash)
+          .single(),
+        10000
       );
-      return { error };
+
+      if (error || !data) {
+        return { error: { message: '用户名或密码错误' } };
+      }
+
+      const userData = { id: data.id, username: data.username };
+      setUser(userData);
+      await AsyncStorage.setItem('liu-ptr-user', JSON.stringify(userData));
+
+      return { error: null };
     } catch (err: any) {
-      return { error: { message: err.message || '登录超时，请检查网络' } };
+      return { error: { message: err.message || '登录失败，请检查网络' } };
     }
   };
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (username: string, password: string) => {
     try {
-      const { error } = await withTimeout(
-        supabase.auth.signUp({ email, password }),
-        15000
+      // 检查用户名是否已存在
+      const { data: existing } = await withTimeout(
+        supabase
+          .from('users')
+          .select('id')
+          .eq('username', username)
+          .single(),
+        10000
       );
-      return { error };
+
+      if (existing) {
+        return { error: { message: '用户名已存在' } };
+      }
+
+      const passwordHash = await hashPassword(password);
+
+      // 创建新用户
+      const { data, error } = await withTimeout(
+        supabase
+          .from('users')
+          .insert({ username, password_hash: passwordHash })
+          .select('id, username')
+          .single(),
+        10000
+      );
+
+      if (error) {
+        return { error: { message: '注册失败：' + error.message } };
+      }
+
+      const userData = { id: data.id, username: data.username };
+      setUser(userData);
+      await AsyncStorage.setItem('liu-ptr-user', JSON.stringify(userData));
+
+      return { error: null };
     } catch (err: any) {
-      return { error: { message: err.message || '注册超时，请检查网络' } };
+      return { error: { message: err.message || '注册失败，请检查网络' } };
     }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    setUser(null);
+    await AsyncStorage.removeItem('liu-ptr-user');
   };
 
   const value = {
-    session,
-    user: session?.user ?? null,
+    user,
     loading,
     signIn,
     signUp,

@@ -15,28 +15,36 @@ import { Spacing, BorderRadius, FontSize, FontWeight } from '@/constants/design-
 import { Colors } from '@/constants/theme';
 
 export function LoginScreen() {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const { signIn, signUp } = useAuth();
 
   const handleSubmit = async () => {
-    if (!email || !password) {
-      Alert.alert('错误', '请填写邮箱和密码');
+    if (!username || !password) {
+      Alert.alert('错误', '请填写用户名和密码');
+      return;
+    }
+
+    if (username.length < 3) {
+      Alert.alert('错误', '用户名至少3个字符');
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert('错误', '密码至少6个字符');
       return;
     }
 
     setLoading(true);
     try {
       const { error } = isSignUp
-        ? await signUp(email, password)
-        : await signIn(email, password);
+        ? await signUp(username, password)
+        : await signIn(username, password);
 
       if (error) {
         Alert.alert('错误', error.message);
-      } else if (isSignUp) {
-        Alert.alert('成功', '注册成功！请检查邮箱确认链接');
       }
     } catch (err: any) {
       Alert.alert('错误', err.message || '操作失败');
@@ -59,10 +67,9 @@ export function LoginScreen() {
         <View style={styles.form}>
           <TextInput
             style={styles.input}
-            placeholder="邮箱"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
+            placeholder="用户名"
+            value={username}
+            onChangeText={setUsername}
             autoCapitalize="none"
             autoCorrect={false}
           />

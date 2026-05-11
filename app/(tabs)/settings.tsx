@@ -43,8 +43,8 @@ export default function SettingsScreen() {
         <Text style={styles.sectionTitle}>账号信息</Text>
         <View style={styles.card}>
           <View style={styles.infoRow}>
-            <Text style={styles.label}>邮箱</Text>
-            <Text style={styles.value}>{user?.email || '未登录'}</Text>
+            <Text style={styles.label}>用户名</Text>
+            <Text style={styles.value}>{user?.username || '未登录'}</Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.label}>用户ID</Text>
