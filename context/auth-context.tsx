@@ -17,23 +17,25 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// 超时 Promise
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error('请求超时')), ms)
-    ),
-  ]);
-}
-
-// 简单密码哈希（个人使用足够）
+// 简单密码哈希
 async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password + 'liu-ptr-salt');
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  try {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password + 'liu-ptr-salt');
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  } catch (e) {
+    // 如果 crypto.subtle 不可用，使用简单哈希
+    let hash = 0;
+    const str = password + 'liu-ptr-salt';
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash).toString(16);
+  }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -41,33 +43,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 从本地存储恢复登录状态
-    AsyncStorage.getItem('liu-ptr-user').then((userData) => {
-      if (userData) {
-        try {
-          setUser(JSON.parse(userData));
-        } catch (e) {
-          // 解析失败，清除
-          AsyncStorage.removeItem('liu-ptr-user');
-        }
-      }
+    // 添加超时，确保 loading 不会一直为 true
+    const timeout = setTimeout(() => {
       setLoading(false);
-    });
+    }, 3000);
+
+    // 从本地存储恢复登录状态
+    AsyncStorage.getItem('liu-ptr-user')
+      .then((userData) => {
+        if (userData) {
+          try {
+            setUser(JSON.parse(userData));
+          } catch (e) {
+            AsyncStorage.removeItem('liu-ptr-user');
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn('AsyncStorage 读取失败:', err);
+      })
+      .finally(() => {
+        clearTimeout(timeout);
+        setLoading(false);
+      });
+
+    return () => clearTimeout(timeout);
   }, []);
 
   const signIn = async (username: string, password: string) => {
     try {
       const passwordHash = await hashPassword(password);
 
-      const { data, error } = await withTimeout(
-        supabase
-          .from('users')
-          .select('id, username')
-          .eq('username', username)
-          .eq('password_hash', passwordHash)
-          .single(),
-        10000
-      );
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, username')
+        .eq('username', username)
+        .eq('password_hash', passwordHash)
+        .single();
 
       if (error || !data) {
         return { error: { message: '用户名或密码错误' } };
@@ -86,14 +98,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (username: string, password: string) => {
     try {
       // 检查用户名是否已存在
-      const { data: existing } = await withTimeout(
-        supabase
-          .from('users')
-          .select('id')
-          .eq('username', username)
-          .single(),
-        10000
-      );
+      const { data: existing } = await supabase
+        .from('users')
+        .select('id')
+        .eq('username', username)
+        .single();
 
       if (existing) {
         return { error: { message: '用户名已存在' } };
@@ -102,14 +111,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const passwordHash = await hashPassword(password);
 
       // 创建新用户
-      const { data, error } = await withTimeout(
-        supabase
-          .from('users')
-          .insert({ username, password_hash: passwordHash })
-          .select('id, username')
-          .single(),
-        10000
-      );
+      const { data, error } = await supabase
+        .from('users')
+        .insert({ username, password_hash: passwordHash })
+        .select('id, username')
+        .single();
 
       if (error) {
         return { error: { message: '注册失败：' + error.message } };
