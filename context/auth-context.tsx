@@ -13,16 +13,32 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// 超时 Promise
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error('请求超时')), ms)
+    ),
+  ]);
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 获取初始会话
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
+    // 获取初始会话，带超时
+    withTimeout(supabase.auth.getSession(), 10000)
+      .then(({ data: { session } }) => {
+        setSession(session);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.warn('获取会话超时或失败:', err.message);
+        // 超时后也停止 loading，显示登录页面
+        setLoading(false);
+      });
 
     // 监听登录状态变化
     const {
@@ -35,19 +51,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { error };
+    try {
+      const { error } = await withTimeout(
+        supabase.auth.signInWithPassword({ email, password }),
+        15000
+      );
+      return { error };
+    } catch (err: any) {
+      return { error: { message: err.message || '登录超时，请检查网络' } };
+    }
   };
 
   const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-    return { error };
+    try {
+      const { error } = await withTimeout(
+        supabase.auth.signUp({ email, password }),
+        15000
+      );
+      return { error };
+    } catch (err: any) {
+      return { error: { message: err.message || '注册超时，请检查网络' } };
+    }
   };
 
   const signOut = async () => {
