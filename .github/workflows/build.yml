@@ -70,21 +70,26 @@ jobs:
       - name: Export web
         run: npx expo export --platform web
 
-      - name: Fix asset paths for subdirectory deployment
+      - name: Fix paths for GitHub Pages subdirectory
         run: |
+          BASE="/liu-PTR"
+          
           for f in dist/**/*.html dist/*.html; do
             [ -f "$f" ] || continue
-            sed -i 's|src="/_expo/|src="/liu-PTR/_expo/|g' "$f"
-            sed -i 's|href="/_expo/|href="/liu-PTR/_expo/|g' "$f"
-            sed -i 's|href="/assets/|href="/liu-PTR/assets/|g' "$f"
-            sed -i 's|src="/assets/|src="/liu-PTR/assets/|g' "$f"
-            sed -i 's|href="/favicon|href="/liu-PTR/favicon|g' "$f"
+            # 修正资源引用路径
+            sed -i "s|src=\"/_expo/|src=\"${BASE}/_expo/|g" "$f"
+            sed -i "s|href=\"/_expo/|href=\"${BASE}/_expo/|g" "$f"
+            sed -i "s|href=\"/assets/|href=\"${BASE}/assets/|g" "$f"
+            sed -i "s|src=\"/assets/|src=\"${BASE}/assets/|g" "$f"
+            sed -i "s|href=\"/favicon|href=\"${BASE}/favicon|g" "$f"
           done
+          
+          # 修正 JS 中的资源路径
           for f in dist/_expo/static/js/web/*.js; do
             [ -f "$f" ] || continue
-            sed -i 's|"/assets/|"/liu-PTR/assets/|g' "$f"
+            sed -i "s|\"/assets/|\"${BASE}/assets/|g" "$f"
           done
-          echo "✅ Asset paths fixed"
+          echo "✅ Paths fixed"
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
