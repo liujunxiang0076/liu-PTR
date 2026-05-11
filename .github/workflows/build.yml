@@ -81,6 +81,11 @@ jobs:
             sed -i 's|src="/assets/|src="/liu-PTR/web/assets/|g' "$f"
             sed -i 's|href="/favicon|href="/liu-PTR/web/favicon|g' "$f"
           done
+          # 修复 JS 中的资源路径
+          for f in dist/_expo/static/js/web/*.js; do
+            [ -f "$f" ] || continue
+            sed -i 's|"/assets/|"/liu-PTR/web/assets/|g' "$f"
+          done
           echo "✅ Asset paths fixed"
 
       - name: Deploy to GitHub Pages
