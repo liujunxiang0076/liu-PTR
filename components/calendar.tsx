@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { forwardRef, useCallback, useImperativeHandle, useMemo } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Calendar as RNCalendar, DateData } from 'react-native-calendars';
 
@@ -45,10 +45,8 @@ function DayCellView({
   weekendColor: string;
 }) {
   const { year, month, day, dateString } = date;
-  // react-native-calendars: state='disabled' for non-current-month days
   const isCurrentMonth = state !== 'disabled';
   const isToday = state === 'today';
-  // holiday API expects 0-based month
   const month0 = month - 1;
   const isWeekendDay = isWeekend(year, month0, day);
 
@@ -131,56 +129,61 @@ function DayCellView({
   );
 }
 
-// ———————————————————— 自定义 Header ————————————————————
+// ———————————————————— 自定义 Header（forwardRef）————————————————————
+// react-native-calendars 的 customHeader 要求：
+// 1. forwardRef 组件
+// 2. 接收 { month, addMonth, ... } props
+// 3. 通过 useImperativeHandle 暴露 onPressLeft / onPressRight（滑动手势需要）
 
-function CalendarHeader({
-  date,
-  onPrev,
-  onNext,
-  onSearchPress,
-  onBackupPress,
-  onSettingsPress,
-  mutedColor,
-}: {
-  date: DateData;
-  onPrev: () => void;
-  onNext: () => void;
+type CalendarHeaderProps = {
+  month: any;      // XDate 对象
+  addMonth: (count: number) => void;
   onSearchPress?: () => void;
   onBackupPress?: () => void;
   onSettingsPress?: () => void;
   mutedColor: string;
-}) {
-  const label = `${date.year}年${date.month}月`;
+};
 
-  return (
-    <View style={styles.header}>
-      <TouchableOpacity onPress={onPrev} hitSlop={12} style={styles.headerArrow}>
-        <ThemedText style={[styles.arrowText, { color: mutedColor }]}>‹</ThemedText>
-      </TouchableOpacity>
-      <ThemedText type="title" style={styles.monthLabelText}>{label}</ThemedText>
-      <View style={styles.headerRightGroup}>
-        <TouchableOpacity onPress={onNext} hitSlop={12} style={styles.headerArrow}>
-          <ThemedText style={[styles.arrowText, { color: mutedColor }]}>›</ThemedText>
+const CustomCalendarHeader = forwardRef<any, CalendarHeaderProps>(
+  ({ month, addMonth, onSearchPress, onBackupPress, onSettingsPress, mutedColor }, ref) => {
+    useImperativeHandle(ref, () => ({
+      onPressLeft: () => addMonth(-1),
+      onPressRight: () => addMonth(1),
+    }));
+
+    // month 是 XDate 对象，用 toString 获取格式化字符串
+    const label = month.toString('yyyy年M月');
+
+    return (
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => addMonth(-1)} hitSlop={12} style={styles.headerArrow}>
+          <ThemedText style={[styles.arrowText, { color: mutedColor }]}>‹</ThemedText>
         </TouchableOpacity>
-        {onSearchPress && (
-          <TouchableOpacity onPress={onSearchPress} hitSlop={12} style={styles.headerArrow}>
-            <ThemedText style={[styles.arrowText, { color: mutedColor }]}>🔍</ThemedText>
+        <ThemedText type="title" style={styles.monthLabelText}>{label}</ThemedText>
+        <View style={styles.headerRightGroup}>
+          <TouchableOpacity onPress={() => addMonth(1)} hitSlop={12} style={styles.headerArrow}>
+            <ThemedText style={[styles.arrowText, { color: mutedColor }]}>›</ThemedText>
           </TouchableOpacity>
-        )}
-        {onBackupPress && (
-          <TouchableOpacity onPress={onBackupPress} hitSlop={12} style={styles.headerArrow}>
-            <ThemedText style={[styles.arrowText, { color: mutedColor }]}>↑↓</ThemedText>
-          </TouchableOpacity>
-        )}
-        {onSettingsPress && (
-          <TouchableOpacity onPress={onSettingsPress} hitSlop={12} style={styles.headerArrow}>
-            <ThemedText style={[styles.arrowText, { color: mutedColor }]}>⚙</ThemedText>
-          </TouchableOpacity>
-        )}
+          {onSearchPress && (
+            <TouchableOpacity onPress={onSearchPress} hitSlop={12} style={styles.headerArrow}>
+              <ThemedText style={[styles.arrowText, { color: mutedColor }]}>🔍</ThemedText>
+            </TouchableOpacity>
+          )}
+          {onBackupPress && (
+            <TouchableOpacity onPress={onBackupPress} hitSlop={12} style={styles.headerArrow}>
+              <ThemedText style={[styles.arrowText, { color: mutedColor }]}>↑↓</ThemedText>
+            </TouchableOpacity>
+          )}
+          {onSettingsPress && (
+            <TouchableOpacity onPress={onSettingsPress} hitSlop={12} style={styles.headerArrow}>
+              <ThemedText style={[styles.arrowText, { color: mutedColor }]}>⚙</ThemedText>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
-    </View>
-  );
-}
+    );
+  }
+);
 
 // ———————————————————— 主组件 ————————————————————
 
@@ -194,66 +197,54 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
   const holidayColor = dangerColor;
   const weekendColor = dangerColor;
 
-  const [currentDate, setCurrentDate] = useState(today);
-
   const handleDayPress = useCallback((day: DateData) => {
     onDayPress(day.dateString, day.year, day.month - 1, day.day);
   }, [onDayPress]);
 
-  const handleMonthChange = useCallback((date: DateData) => {
-    setCurrentDate(date.dateString);
-  }, []);
+  // customHeader 组件：将额外 props 通过闭包捕获
+  // eslint-disable-next-line react/display-name
+  const HeaderComponent = useMemo(() => {
+    return forwardRef<any, { month: any; addMonth: (count: number) => void }>((props, ref) => (
+      <CustomCalendarHeader
+        ref={ref}
+        month={props.month}
+        addMonth={props.addMonth}
+        onSearchPress={onSearchPress}
+        onBackupPress={onBackupPress}
+        onSettingsPress={onSettingsPress}
+        mutedColor={mutedColor}
+      />
+    ));
+  }, [onSearchPress, onBackupPress, onSettingsPress, mutedColor]);
 
-  const handlePrev = useCallback(() => {
-    const [y, m] = currentDate.split('-').map(Number);
-    const prev = m === 1 ? { y: y - 1, m: 12 } : { y, m: m - 1 };
-    setCurrentDate(`${prev.y}-${String(prev.m).padStart(2, '0')}-01`);
-  }, [currentDate]);
-
-  const handleNext = useCallback(() => {
-    const [y, m] = currentDate.split('-').map(Number);
-    const next = m === 12 ? { y: y + 1, m: 1 } : { y, m: m + 1 };
-    setCurrentDate(`${next.y}-${String(next.m).padStart(2, '0')}-01`);
-  }, [currentDate]);
-
-  const renderHeader = useCallback((date: DateData) => (
-    <CalendarHeader
-      date={date}
-      onPrev={handlePrev}
-      onNext={handleNext}
-      onSearchPress={onSearchPress}
-      onBackupPress={onBackupPress}
-      onSettingsPress={onSettingsPress}
-      mutedColor={mutedColor}
-    />
-  ), [handlePrev, handleNext, onSearchPress, onBackupPress, onSettingsPress, mutedColor]);
-
-  const renderDay = useCallback(({ date, state }: { date: DateData; state: string }) => (
-    <DayCellView
-      date={date}
-      state={state}
-      onDayPress={onDayPress}
-      getDailyTotal={getDailyTotal}
-      getDayBudget={getDayBudget}
-      tint={tint}
-      mutedColor={mutedColor}
-      holidayColor={holidayColor}
-      weekendColor={weekendColor}
-    />
-  ), [onDayPress, getDailyTotal, getDayBudget, tint, mutedColor, holidayColor, weekendColor]);
+  const renderDay = useCallback((props: any) => {
+    const { date, state } = props;
+    return (
+      <DayCellView
+        date={date}
+        state={state}
+        onDayPress={onDayPress}
+        getDailyTotal={getDailyTotal}
+        getDayBudget={getDayBudget}
+        tint={tint}
+        mutedColor={mutedColor}
+        holidayColor={holidayColor}
+        weekendColor={weekendColor}
+      />
+    );
+  }, [onDayPress, getDailyTotal, getDayBudget, tint, mutedColor, holidayColor, weekendColor]);
 
   return (
     <View style={styles.container}>
       <RNCalendar
-        current={currentDate}
+        current={today}
         onDayPress={handleDayPress}
-        onMonthChange={handleMonthChange}
         dayComponent={renderDay}
-        renderHeader={renderHeader}
+        customHeader={HeaderComponent}
         hideArrows={true}
         enableSwipeMonths={true}
         firstDay={1}
-        hideExtraDays={false}
+        hideExtraDays={true}
         theme={{
           'stylesheet.calendar.header': {
             dayHeader: {
@@ -272,16 +263,9 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
               justifyContent: 'space-around',
             },
           },
-          'stylesheet.day.basic': {
-            base: {
-              width: '14%',
-              alignItems: 'center',
-              justifyContent: 'flex-start',
-              paddingTop: 8,
-              paddingBottom: 4,
-              minHeight: 68,
-            },
-          },
+          // 不覆盖 stylesheet.day.basic.base（对 dayComponent 无效）
+          // 库的 dayContainer 已有 flex:1, alignItems:'center'
+          // dayCell 不再使用 flex:1，避免双重 flex 冲突
         }}
       />
     </View>
@@ -321,7 +305,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   dayCell: {
-    flex: 1,
+    // 不使用 flex:1，库的 dayContainer 已经是 flex:1
     alignItems: 'center',
     justifyContent: 'flex-start',
     paddingVertical: 4,
