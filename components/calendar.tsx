@@ -8,7 +8,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { getHoliday, getRestDayBadge, isWeekend, type RestDayBadge } from '@/constants/holidays';
+import { getHoliday, getRestDayBadge, getLunarText, isWeekend, type RestDayBadge } from '@/constants/holidays';
 import { compactAmount } from '@/constants/currency';
 import { SemanticColors } from '@/constants/theme';
 import { useAppColors } from '@/hooks/use-app-colors';
@@ -47,6 +47,7 @@ type DayCell = {
   isToday: boolean;
   isWeekend: boolean;
   holiday: string | null;
+  lunarText: string;
   restDayBadge: RestDayBadge;
   dateKey: string;
 };
@@ -81,6 +82,7 @@ function buildGrid(year: number, month: number, today: Date): DayCell[][] {
           currentMonth: false, isToday: false,
           isWeekend: isWeekend(py, pm, d),
           holiday: getHoliday(py, pm, d),
+          lunarText: getLunarText(py, pm, d),
           restDayBadge: getRestDayBadge(py, pm, d),
           dateKey: makeDateKey(py, pm, d),
         });
@@ -91,6 +93,7 @@ function buildGrid(year: number, month: number, today: Date): DayCell[][] {
           isToday: isSameDay(new Date(year, month, dayCounter), today),
           isWeekend: isWeekend(year, month, dayCounter),
           holiday: getHoliday(year, month, dayCounter),
+          lunarText: getLunarText(year, month, dayCounter),
           restDayBadge: getRestDayBadge(year, month, dayCounter),
           dateKey: makeDateKey(year, month, dayCounter),
         });
@@ -103,6 +106,7 @@ function buildGrid(year: number, month: number, today: Date): DayCell[][] {
           currentMonth: false, isToday: false,
           isWeekend: isWeekend(ny, nm, nextDayCounter),
           holiday: getHoliday(ny, nm, nextDayCounter),
+          lunarText: getLunarText(ny, nm, nextDayCounter),
           restDayBadge: getRestDayBadge(ny, nm, nextDayCounter),
           dateKey: makeDateKey(ny, nm, nextDayCounter),
         });
@@ -149,7 +153,7 @@ const DayCellView = React.memo(function DayCellView({
     : cell.isToday ? '#fff' : cell.isWeekend ? weekendColor : undefined;
 
   const hasExpense = dailyTotal > 0;
-  const showAmount = hasExpense && !cell.holiday;
+  const showAmount = hasExpense && !cell.holiday && !cell.lunarText;
   const overBudget = budgetAmount > 0 && dailyTotal > budgetAmount;
   const amountColor = overBudget ? SemanticColors.danger : tint;
 
@@ -181,13 +185,19 @@ const DayCellView = React.memo(function DayCellView({
           </View>
         )}
       </View>
-      {cell.holiday && (
+      {cell.holiday ? (
         <ThemedText
           style={[styles.holidayText, { color: cell.currentMonth ? holidayColor : mutedColor }]}
           numberOfLines={1}>
           {cell.holiday}
         </ThemedText>
-      )}
+      ) : cell.lunarText && cell.currentMonth ? (
+        <ThemedText
+          style={[styles.holidayText, { color: mutedColor }]}
+          numberOfLines={1}>
+          {cell.lunarText}
+        </ThemedText>
+      ) : null}
       {showAmount && (
         <ThemedText
           style={[styles.amountText, { color: cell.currentMonth ? amountColor : mutedColor }]}
@@ -195,8 +205,8 @@ const DayCellView = React.memo(function DayCellView({
           {compactAmount(dailyTotal)}
         </ThemedText>
       )}
-      {/* 节假日+费用同时存在时：显示紧凑金额 */}
-      {cell.holiday && hasExpense && (
+      {/* 节假日/农历+费用同时存在时：显示紧凑金额 */}
+      {(cell.holiday || cell.lunarText) && hasExpense && (
         <ThemedText
           style={[styles.amountText, { color: cell.currentMonth ? amountColor : mutedColor }]}
           numberOfLines={1}>

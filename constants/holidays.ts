@@ -56,6 +56,25 @@ function parseHolidayName(name: string): string | null {
  * @param month 月（0-based）
  * @param day 日
  */
+/**
+ * 判断是否是该假期的第一天（只有第一天显示节日名，其余假日天显示农历）
+ * 通过检查前一天是否同属一个假期来判断
+ */
+function isFirstDayOfHoliday(dateStr: string, holidayName: string | null): boolean {
+  if (!holidayName) return false;
+  try {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const prev = new Date(y, m - 1, d - 1);
+    const prevStr = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}-${String(prev.getDate()).padStart(2, '0')}`;
+    const prevDetail = getDayDetail(prevStr);
+    const prevName = parseHolidayName(prevDetail.name);
+    // 前一天不是同一个假期 → 今天是假期第一天
+    return prevName !== holidayName;
+  } catch {
+    return true;
+  }
+}
+
 export function getDayInfo(year: number, month: number, day: number): DayDetail {
   const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
@@ -63,7 +82,10 @@ export function getDayInfo(year: number, month: number, day: number): DayDetail 
   const detail = getDayDetail(dateStr);
 
   // 解析节假日名称
-  const holidayName = parseHolidayName(detail.name);
+  const rawHolidayName = parseHolidayName(detail.name);
+
+  // 只在假期第一天显示节日名，其余假日天返回 null（让农历信息显示）
+  const holidayName = isFirstDayOfHoliday(dateStr, rawHolidayName) ? rawHolidayName : null;
 
   // 获取农历信息
   let lunarDate = '';

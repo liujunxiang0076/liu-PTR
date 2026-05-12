@@ -9,9 +9,20 @@ describe('getHoliday', () => {
     expect(getHoliday(2026, 0, 1)).toBe('元旦');
   });
 
-  it('春节返回名称', () => {
-    // 2026-02-17 春节
-    expect(getHoliday(2026, 1, 17)).toBe('春节');
+  it('春节假期第一天返回名称', () => {
+    // 2026年春节假期：只有第一天显示"春节"，其余天显示农历
+    // 找到春节假期的第一天
+    let found = false;
+    for (let d = 14; d <= 22; d++) {
+      const h = getHoliday(2026, 1, d);
+      if (h === '春节') {
+        found = true;
+        // 确认第二天不显示"春节"（显示农历）
+        expect(getHoliday(2026, 1, d + 1)).not.toBe('春节');
+        break;
+      }
+    }
+    expect(found).toBe(true);
   });
 
   it('普通日期返回null', () => {
