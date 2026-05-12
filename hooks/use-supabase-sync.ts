@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase, TABLES } from '../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../context/auth-context';
 
 // 同步状态
 interface SyncState {
@@ -15,17 +16,44 @@ interface LocalData {
   expenses: any[];
 }
 
+const LAST_SYNC_KEY = 'liu-ptr-last-sync';
+
 export function useSupabaseSync() {
+  const { user } = useAuth();
   const [syncState, setSyncState] = useState<SyncState>({
     isSyncing: false,
     lastSyncTime: null,
     error: null,
   });
 
+  // 用 ref 跟踪 sync 函数，避免循环依赖
+  const syncRef = useRef<(() => Promise<boolean>) | undefined>(undefined);
+
+  // 启动时从 AsyncStorage 恢复 lastSyncTime
+  useEffect(() => {
+    AsyncStorage.getItem(LAST_SYNC_KEY).then((ts) => {
+      if (ts) {
+        setSyncState(prev => ({ ...prev, lastSyncTime: new Date(ts) }));
+      }
+    });
+  }, []);
+
+  // 登录后自动同步
+  useEffect(() => {
+    if (user && syncRef.current) {
+      syncRef.current!();
+    }
+  }, [user?.id]);
+
+  // 保存 lastSyncTime 到 AsyncStorage
+  const persistSyncTime = async () => {
+    const now = new Date();
+    await AsyncStorage.setItem(LAST_SYNC_KEY, now.toISOString());
+    return now;
+  };
+
   // 从云端拉取数据
   const pullFromCloud = useCallback(async () => {
-    setSyncState(prev => ({ ...prev, isSyncing: true, error: null }));
-
     try {
       // 拉取行程
       const { data: trips, error: tripsError } = await supabase
@@ -51,27 +79,19 @@ export function useSupabaseSync() {
 
       await AsyncStorage.setItem('liu-ptr-data', JSON.stringify(localData));
 
-      setSyncState({
-        isSyncing: false,
-        lastSyncTime: new Date(),
-        error: null,
-      });
-
       return localData;
     } catch (error: any) {
-      setSyncState({
+      setSyncState(prev => ({
+        ...prev,
         isSyncing: false,
-        lastSyncTime: null,
         error: error.message,
-      });
+      }));
       return null;
     }
   }, []);
 
   // 推送本地数据到云端
   const pushToCloud = useCallback(async (localData: LocalData) => {
-    setSyncState(prev => ({ ...prev, isSyncing: true, error: null }));
-
     try {
       // 推送行程
       if (localData.trips.length > 0) {
@@ -91,19 +111,13 @@ export function useSupabaseSync() {
         if (expensesError) throw expensesError;
       }
 
-      setSyncState({
-        isSyncing: false,
-        lastSyncTime: new Date(),
-        error: null,
-      });
-
       return true;
     } catch (error: any) {
-      setSyncState({
+      setSyncState(prev => ({
+        ...prev,
         isSyncing: false,
-        lastSyncTime: null,
         error: error.message,
-      });
+      }));
       return false;
     }
   }, []);
@@ -137,9 +151,12 @@ export function useSupabaseSync() {
       // 5. 推送合并后的数据到云端
       await pushToCloud(mergedData);
 
+      // 6. 持久化同步时间
+      const now = await persistSyncTime();
+
       setSyncState({
         isSyncing: false,
-        lastSyncTime: new Date(),
+        lastSyncTime: now,
         error: null,
       });
 
@@ -153,6 +170,9 @@ export function useSupabaseSync() {
       return false;
     }
   }, [pullFromCloud, pushToCloud]);
+
+  // 同步 ref
+  syncRef.current = sync;
 
   return {
     ...syncState,
