@@ -75,27 +75,44 @@ jobs:
           python3 -c "
           import glob, os, shutil, re
           BASE = '/liu-PTR'
-          
+
+          # Routing script: override location.pathname getter + patch pushState/replaceState
+          SCRIPT = '''(function(){
+            var B='BASE_PLACEHOLDER', _loc=window.location, _proto=_loc.__proto__||{};
+            var _origGet=Object.getOwnPropertyDescriptor(_proto,'pathname');
+            if(_origGet&&_origGet.get){
+              Object.defineProperty(_proto,'pathname',{
+                get:function(){
+                  var p=_origGet.get.call(_loc);
+                  if(p.startsWith(B+'/'))return p.slice(B.length);
+                  if(p===B)return '/';
+                  return p;
+                },configurable:true
+              });
+            }
+            var _P=history.pushState.bind(history),_R=history.replaceState.bind(history);
+            function addB(u){return(typeof u==='string'&&u.startsWith('/')&&!u.startsWith(B+'/'))?B+u:u}
+            history.pushState=function(s,t,u){return _P(s,t,addB(u))};
+            history.replaceState=function(s,t,u){return _R(s,t,addB(u))};
+          })()'''.replace('BASE_PLACEHOLDER', BASE)
+
           for f in glob.glob('dist/**/*.html', recursive=True):
               with open(f) as fh: c = fh.read()
-              # 修复资源路径
               c = c.replace('src=\"/_expo/', 'src=\"' + BASE + '/_expo/')
               c = c.replace('href=\"/_expo/', 'href=\"' + BASE + '/_expo/')
               c = c.replace('href=\"/assets/', 'href=\"' + BASE + '/assets/')
               c = c.replace('src=\"/assets/', 'src=\"' + BASE + '/assets/')
               c = c.replace('href=\"/favicon', 'href=\"' + BASE + '/favicon')
-              # 修复内部链接 (href=\"/trips\" -> href=\"/liu-PTR/trips\")
-              c = re.sub(r'href=\"/(?!liu-PTR)([^\"]*?)\"', r'href=\"' + BASE + '/\1\"', c)
+              c = c.replace('<head>', '<head><script>' + SCRIPT + '</script>', 1)
               with open(f, 'w') as fh: fh.write(c)
-          
+
           for f in glob.glob('dist/_expo/static/js/web/*.js'):
               with open(f) as fh: c = fh.read()
               c = c.replace('\"/assets/', '\"' + BASE + '/assets/')
               with open(f, 'w') as fh: fh.write(c)
-          
-          # SPA fallback
+
           shutil.copy('dist/index.html', 'dist/404.html')
-          print('✅ All paths fixed + 404.html created')
+          print('✅ All paths fixed + routing script injected + 404.html')
           "
 
       - name: Deploy to GitHub Pages
