@@ -64,9 +64,9 @@ export default function HomeScreen() {
         onDayPress={handleDayPress}
         getDailyTotal={getDailyTotal}
         getDayBudget={getDayBudget}
-        onOpenSettings={handleOpenSettings}
-        onOpenBackup={handleOpenBackup}
-        onOpenSearch={handleOpenSearch}
+        onSettingsPress={handleOpenSettings}
+        onBackupPress={handleOpenBackup}
+        onSearchPress={handleOpenSearch}
       />
       <DayDetailPanel
         visible={panel.visible}

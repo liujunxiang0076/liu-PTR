@@ -8,8 +8,6 @@ import { SemanticColors } from '@/constants/theme';
 import { useAppColors } from '@/hooks/use-app-colors';
 import { ThemedText } from './themed-text';
 
-const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
-
 export function makeDateKey(y: number, m: number, d: number) {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
@@ -47,16 +45,19 @@ function DayCellView({
   weekendColor: string;
 }) {
   const { year, month, day, dateString } = date;
+  // react-native-calendars: state='disabled' for non-current-month days
   const isCurrentMonth = state !== 'disabled';
   const isToday = state === 'today';
-  const isWeekendDay = isWeekend(year, month - 1, day);
+  // holiday API expects 0-based month
+  const month0 = month - 1;
+  const isWeekendDay = isWeekend(year, month0, day);
 
-  const holiday = getHoliday(year, month - 1, day);
-  const lunarText = getLunarText(year, month - 1, day);
-  const restDayBadge: RestDayBadge = getRestDayBadge(year, month - 1, day);
+  const holiday = getHoliday(year, month0, day);
+  const lunarText = getLunarText(year, month0, day);
+  const restDayBadge: RestDayBadge = getRestDayBadge(year, month0, day);
 
   const dailyTotal = isCurrentMonth ? getDailyTotal(dateString) : 0;
-  const budgetAmount = isCurrentMonth ? getDayBudget(year, month - 1, day).amount : 0;
+  const budgetAmount = isCurrentMonth ? getDayBudget(year, month0, day).amount : 0;
   const hasExpense = dailyTotal > 0;
   const overBudget = budgetAmount > 0 && dailyTotal > budgetAmount;
   const amountColor = overBudget ? SemanticColors.danger : tint;
@@ -69,9 +70,9 @@ function DayCellView({
 
   return (
     <TouchableOpacity
-      style={styles.weekCell}
+      style={styles.dayCell}
       activeOpacity={0.6}
-      onPress={() => onDayPress(dateString, year, month - 1, day)}
+      onPress={() => onDayPress(dateString, year, month0, day)}
     >
       <View style={styles.dayWrapper}>
         {isToday ? (
@@ -119,9 +120,9 @@ function DayCellView({
           {compactAmount(dailyTotal)}
         </ThemedText>
       )}
-      {(holiday || lunarText) && hasExpense && (
+      {(holiday || lunarText) && hasExpense && isCurrentMonth && (
         <ThemedText
-          style={[styles.amountText, { color: isCurrentMonth ? amountColor : mutedColor }]}
+          style={[styles.amountText, { color: amountColor }]}
           numberOfLines={1}>
           {compactAmount(dailyTotal)}
         </ThemedText>
@@ -258,7 +259,7 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
             dayHeader: {
               marginTop: 2,
               marginBottom: 4,
-              width: 32,
+              width: '14%',
               textAlign: 'center',
               fontSize: 12,
               fontWeight: '600',
@@ -273,11 +274,12 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
           },
           'stylesheet.day.basic': {
             base: {
-              flex: 1,
+              width: '14%',
               alignItems: 'center',
               justifyContent: 'flex-start',
-              paddingVertical: 8,
-              minHeight: 62,
+              paddingTop: 8,
+              paddingBottom: 4,
+              minHeight: 68,
             },
           },
         }}
@@ -290,7 +292,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 4,
-    gap: 2,
   },
   header: {
     flexDirection: 'row',
@@ -319,12 +320,12 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
   },
-  weekCell: {
+  dayCell: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingVertical: 8,
-    minHeight: 62,
+    paddingVertical: 4,
+    minHeight: 68,
     gap: 1,
   },
   dayText: {
