@@ -81,11 +81,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .select('id, username')
         .eq('username', username)
         .eq('password_hash', passwordHash)
-        .single();
+        .maybeSingle();
 
       if (dbError || !data) {
-        const msg = dbError?.message || '用户名或密码错误';
-        return { error: { message: msg } };
+        return { error: { message: '用户名或密码错误' } };
       }
 
       const userData = { id: data.id, username: data.username };
@@ -107,7 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from('users')
         .select('id')
         .eq('username', username)
-        .single();
+        .maybeSingle();
 
       if (existing) {
         return { error: { message: '用户名已存在' } };
