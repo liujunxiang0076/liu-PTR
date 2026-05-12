@@ -23,8 +23,9 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "output": "single",
-      "favicon": "./assets/images/favicon.png"
+      "output": "static",
+      "favicon": "./assets/images/favicon.png",
+      "baseUrl": "/liu-PTR"
     },
     "plugins": [
       "expo-router",
