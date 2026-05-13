@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -331,7 +331,6 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
     };
   });
 
-  const pendingRef = useRef<typeof gridData | null>(null);
   const [width, setWidth] = useState(0);
 
   const { tint, muted: mutedColor, danger: dangerColor } = useAppColors();
@@ -355,75 +354,71 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
     [onDayPress]
   );
 
-  const precomputeTransition = useCallback(
+  // 月份切换完毕：复用已有 grid 对象，只补充计算缺失的那个
+  // prev 和 curr 复用旧引用 → React.memo 生效 → 对应 MonthGrid 不重新挂载 cell
+  const applyTransition = useCallback(
     (dir: number) => {
-      const d = gridData;
-      const target = computeAdjacent(d.year, d.month, dir);
-      const prev = computeAdjacent(target.y, target.m, 1);
-      const next = computeAdjacent(target.y, target.m, -1);
-      pendingRef.current = {
-        year: target.y,
-        month: target.m,
-        label: computeLabel(target.y, target.m),
-        currGrid: buildGrid(target.y, target.m, today),
-        prevGrid: buildGrid(prev.y, prev.m, today),
-        nextGrid: buildGrid(next.y, next.m, today),
-      };
+      setGridData((prev) => {
+        if (dir < 0) {
+          // 前进：旧 curr → prev，旧 next → curr，补算 next
+          const ny = prev.month === 11 ? prev.year + 1 : prev.year;
+          const nm = prev.month === 11 ? 0 : prev.month + 1;
+          return {
+            year: ny, month: nm,
+            label: computeLabel(ny, nm),
+            prevGrid: prev.currGrid,
+            currGrid: prev.nextGrid,
+            nextGrid: buildGrid(
+              nm === 11 ? ny + 1 : ny, nm === 11 ? 0 : nm + 1, today,
+            ),
+          };
+        }
+        // 后退：补算 prev，旧 prev → curr，旧 curr → next
+        const py = prev.month === 0 ? prev.year - 1 : prev.year;
+        const pm = prev.month === 0 ? 11 : prev.month - 1;
+        return {
+          year: py, month: pm,
+          label: computeLabel(py, pm),
+          prevGrid: buildGrid(
+            pm === 0 ? py - 1 : py, pm === 0 ? 11 : pm - 1, today,
+          ),
+          currGrid: prev.prevGrid,
+          nextGrid: prev.currGrid,
+        };
+      });
+      requestAnimationFrame(() => {
+        isSwiping.value = false;
+      });
     },
-    [today, gridData]
+    [today, isSwiping],
   );
-
-  const applyTransition = useCallback(() => {
-    const pending = pendingRef.current;
-    if (!pending) return;
-    pendingRef.current = null;
-    setGridData(pending);
-    requestAnimationFrame(() => {
-      isSwiping.value = false;
-    });
-  }, [isSwiping]);
 
   const navigateMonth = useCallback(
     (dir: number) => {
       if (isSwiping.value || width === 0) return;
       isSwiping.value = true;
-      precomputeTransition(dir);
       const targetX = dir < 0 ? -2 * width : 0;
       translateX.value = withTiming(targetX, { duration: ANIM_DURATION }, (finished) => {
         if (finished) {
           translateX.value = -width;
-          runOnJS(applyTransition)();
+          runOnJS(applyTransition)(dir);
         }
       });
     },
-    [width, precomputeTransition, applyTransition, isSwiping, translateX]
+    [width, applyTransition, isSwiping, translateX],
   );
 
   const onLayout = useCallback((e: LayoutChangeEvent) => {
     setWidth(e.nativeEvent.layout.width);
   }, []);
 
-  const precomputedDir = useRef(0);
-
   const panGesture = Gesture.Pan()
     .onStart(() => {
       if (isSwiping.value) return;
-      precomputedDir.current = 0;
     })
     .onUpdate((e) => {
       if (isSwiping.value) return;
       translateX.value = -width + e.translationX;
-
-      const w = width;
-      if (w > 0) {
-        if (e.translationX < -w * 0.3 && precomputedDir.current !== -1) {
-          precomputedDir.current = -1;
-          runOnJS(precomputeTransition)(-1);
-        } else if (e.translationX > w * 0.3 && precomputedDir.current !== 1) {
-          precomputedDir.current = 1;
-          runOnJS(precomputeTransition)(1);
-        }
-      }
     })
     .onEnd((e) => {
       if (isSwiping.value) return;
@@ -431,20 +426,18 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
 
       if (e.translationX < -SWIPE_THRESHOLD && w > 0) {
         isSwiping.value = true;
-        if (precomputedDir.current !== -1) runOnJS(precomputeTransition)(-1);
         translateX.value = withTiming(-2 * w, { duration: ANIM_DURATION }, (finished) => {
           if (finished) {
             translateX.value = -w;
-            runOnJS(applyTransition)();
+            runOnJS(applyTransition)(-1);
           }
         });
       } else if (e.translationX > SWIPE_THRESHOLD && w > 0) {
         isSwiping.value = true;
-        if (precomputedDir.current !== 1) runOnJS(precomputeTransition)(1);
         translateX.value = withTiming(0, { duration: ANIM_DURATION }, (finished) => {
           if (finished) {
             translateX.value = -w;
-            runOnJS(applyTransition)();
+            runOnJS(applyTransition)(1);
           }
         });
       } else {
