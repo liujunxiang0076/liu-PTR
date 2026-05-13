@@ -58,18 +58,25 @@ function parseHolidayName(name: string): string | null {
  */
 /**
  * 判断是否是该假期的第一天（只有第一天显示节日名，其余假日天显示农历）
- * 通过检查前一天是否同属一个假期来判断
+ * 跳过调休工作日往前查找：如2/15是春节第一天，2/14是调休补班日标了"春节"但应忽略
  */
 function isFirstDayOfHoliday(dateStr: string, holidayName: string | null): boolean {
   if (!holidayName) return false;
   try {
     const [y, m, d] = dateStr.split('-').map(Number);
-    const prev = new Date(y, m - 1, d - 1);
-    const prevStr = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}-${String(prev.getDate()).padStart(2, '0')}`;
-    const prevDetail = getDayDetail(prevStr);
-    const prevName = parseHolidayName(prevDetail.name);
-    // 前一天不是同一个假期 → 今天是假期第一天
-    return prevName !== holidayName;
+    let prevDate = new Date(y, m - 1, d - 1);
+    for (let i = 0; i < 7; i++) {
+      const prevStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}-${String(prevDate.getDate()).padStart(2, '0')}`;
+      const prevDetail = getDayDetail(prevStr);
+      // 跳过调休工作日（库有时将补班日也标为节假日范围）
+      if (prevDetail.work) {
+        prevDate = new Date(prevDate.getFullYear(), prevDate.getMonth(), prevDate.getDate() - 1);
+        continue;
+      }
+      const prevName = parseHolidayName(prevDetail.name);
+      return prevName !== holidayName;
+    }
+    return true;
   } catch {
     return true;
   }
