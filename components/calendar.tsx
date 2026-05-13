@@ -360,9 +360,13 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
     [onDayPress]
   );
 
-  // 月份切换完毕：交换 ref 引用，只触发最小重渲染（header 文本）
+  // 手势滑动完成：使用预计算的 grid 交换引用
   const commitAndReset = useCallback(
     (dir: number) => {
+      if (!pendingGridRef.current) {
+        isSwiping.value = false;
+        return;
+      }
       const prev = gridRef.current;
       if (dir < 0) {
         const ny = prev.month === 11 ? prev.year + 1 : prev.year;
@@ -371,18 +375,14 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
           year: ny, month: nm,
           prevGrid: prev.currGrid,
           currGrid: prev.nextGrid,
-          nextGrid: pendingGridRef.current ?? buildGrid(
-            nm === 11 ? ny + 1 : ny, nm === 11 ? 0 : nm + 1, today,
-          ),
+          nextGrid: pendingGridRef.current,
         };
       } else {
         const py = prev.month === 0 ? prev.year - 1 : prev.year;
         const pm = prev.month === 0 ? 11 : prev.month - 1;
         gridRef.current = {
           year: py, month: pm,
-          prevGrid: pendingGridRef.current ?? buildGrid(
-            pm === 0 ? py - 1 : py, pm === 0 ? 11 : pm - 1, today,
-          ),
+          prevGrid: pendingGridRef.current,
           currGrid: prev.prevGrid,
           nextGrid: prev.currGrid,
         };
@@ -391,22 +391,47 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
       setGridLabel(computeLabel(gridRef.current.year, gridRef.current.month));
       isSwiping.value = false;
     },
-    [today, isSwiping],
+    [isSwiping],
   );
 
+  // 按钮切换：动画前先更新 gridRef + label，中心面板立即显示新月份数据
   const navigateMonth = useCallback(
     (dir: number) => {
       if (isSwiping.value || width === 0) return;
       isSwiping.value = true;
+
+      // 先切换数据，再启动滑动动画
+      const prev = gridRef.current;
+      if (dir < 0) {
+        const ny = prev.month === 11 ? prev.year + 1 : prev.year;
+        const nm = prev.month === 11 ? 0 : prev.month + 1;
+        gridRef.current = {
+          year: ny, month: nm,
+          prevGrid: prev.currGrid,
+          currGrid: prev.nextGrid,
+          nextGrid: buildGrid(nm === 11 ? ny + 1 : ny, nm === 11 ? 0 : nm + 1, today),
+        };
+      } else {
+        const py = prev.month === 0 ? prev.year - 1 : prev.year;
+        const pm = prev.month === 0 ? 11 : prev.month - 1;
+        gridRef.current = {
+          year: py, month: pm,
+          prevGrid: buildGrid(pm === 0 ? py - 1 : py, pm === 0 ? 11 : pm - 1, today),
+          currGrid: prev.prevGrid,
+          nextGrid: prev.currGrid,
+        };
+      }
+      setGridLabel(computeLabel(gridRef.current.year, gridRef.current.month));
+
       const targetX = dir < 0 ? -2 * width : 0;
       translateX.value = withTiming(targetX, { duration: ANIM_DURATION }, (finished) => {
         if (finished) {
           translateX.value = -width;
-          runOnJS(commitAndReset)(dir);
+          runOnJS(() => { isSwiping.value = false; })();
         }
       });
     },
-    [width, commitAndReset, isSwiping, translateX],
+    [width, today, isSwiping, translateX],
   );
 
   const onLayout = useCallback((e: LayoutChangeEvent) => {
