@@ -127,7 +127,64 @@ function computeAdjacent(y: number, m: number, dir: number) {
   return m === 0 ? { y: y - 1, m: 11 } : { y, m: m - 1 };
 }
 
-// ———————————————————— 日期格子 ————————————————————
+// ─── header ────────────────────────────────────────────────────
+
+function CalendarHeader({
+  label,
+  mutedColor,
+  onPrev,
+  onNext,
+  onSearchPress,
+  onBackupPress,
+  onSettingsPress,
+}: {
+  label: string;
+  mutedColor: string;
+  onPrev?: () => void;
+  onNext?: () => void;
+  onSearchPress?: () => void;
+  onBackupPress?: () => void;
+  onSettingsPress?: () => void;
+}) {
+  return (
+    <View style={styles.header}>
+      {onPrev ? (
+        <TouchableOpacity onPress={onPrev} hitSlop={12} style={styles.headerArrow}>
+          <ThemedText style={[styles.arrowText, { color: mutedColor }]}>‹</ThemedText>
+        </TouchableOpacity>
+      ) : (
+        <View style={styles.headerSpacer} />
+      )}
+      <ThemedText type="title" style={styles.monthLabelText}>{label}</ThemedText>
+      <View style={styles.headerRightGroup}>
+        {onNext ? (
+          <TouchableOpacity onPress={onNext} hitSlop={12} style={styles.headerArrow}>
+            <ThemedText style={[styles.arrowText, { color: mutedColor }]}>›</ThemedText>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.headerSpacer} />
+        )}
+        {onSearchPress && (
+          <TouchableOpacity onPress={onSearchPress} hitSlop={12} style={styles.headerArrow}>
+            <ThemedText style={[styles.arrowText, { color: mutedColor }]}>🔍</ThemedText>
+          </TouchableOpacity>
+        )}
+        {onBackupPress && (
+          <TouchableOpacity onPress={onBackupPress} hitSlop={12} style={styles.headerArrow}>
+            <ThemedText style={[styles.arrowText, { color: mutedColor }]}>↑↓</ThemedText>
+          </TouchableOpacity>
+        )}
+        {onSettingsPress && (
+          <TouchableOpacity onPress={onSettingsPress} hitSlop={12} style={styles.headerArrow}>
+            <ThemedText style={[styles.arrowText, { color: mutedColor }]}>⚙</ThemedText>
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+}
+
+// ─── 日期格子 ─────────────────────────────────────────────────
 
 const DayCellView = React.memo(function DayCellView({
   cell,
@@ -205,7 +262,6 @@ const DayCellView = React.memo(function DayCellView({
           {compactAmount(dailyTotal)}
         </ThemedText>
       )}
-      {/* 节假日/农历+费用同时存在时：显示紧凑金额 */}
       {(cell.holiday || cell.lunarText) && hasExpense && (
         <ThemedText
           style={[styles.amountText, { color: cell.currentMonth ? amountColor : mutedColor }]}
@@ -217,9 +273,9 @@ const DayCellView = React.memo(function DayCellView({
   );
 });
 
-// ———————————————————— 单月网格 ————————————————————
+// ─── 单月网格 ─────────────────────────────────────────────────
 
-function MonthGrid({
+const MonthGrid = React.memo(function MonthGrid({
   grid,
   onDayPress,
   getDailyTotal,
@@ -236,9 +292,9 @@ function MonthGrid({
     <View style={{ width: '100%' }}>
       {grid.map((week, ri) => (
         <View key={ri} style={styles.weekRow}>
-          {week.map((cell, ci) => (
+          {week.map((cell) => (
             <DayCellView
-              key={ci}
+              key={cell.dateKey}
               cell={cell}
               dailyTotal={cell.currentMonth ? getDailyTotal(cell.dateKey) : 0}
               budgetAmount={cell.currentMonth ? getDayBudget(cell.year, cell.month, cell.day).amount : 0}
@@ -253,14 +309,13 @@ function MonthGrid({
       ))}
     </View>
   );
-}
+});
 
-// ———————————————————— 主组件 ————————————————————
+// ─── 主组件 ───────────────────────────────────────────────────
 
 export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPress, onBackupPress, onSearchPress }: Props) {
   const today = useMemo(() => new Date(), []);
 
-  // 月份状态 + 网格数据合为一个 state，保证原子更新
   const [gridData, setGridData] = useState(() => {
     const y = today.getFullYear();
     const m = today.getMonth();
@@ -276,28 +331,30 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
     };
   });
 
-  // 用于手势滑动过程中缓存预计算的目标数据
   const pendingRef = useRef<typeof gridData | null>(null);
-
   const [width, setWidth] = useState(0);
 
   const { tint, muted: mutedColor, danger: dangerColor } = useAppColors();
   const holidayColor = dangerColor;
   const weekendColor = dangerColor;
-
-  const colors = { tint, muted: mutedColor, holiday: holidayColor, weekend: weekendColor };
+  const colors = useMemo(() => ({ tint, muted: mutedColor, holiday: holidayColor, weekend: weekendColor }), [tint, mutedColor, holidayColor, weekendColor]);
 
   const translateX = useSharedValue(0);
   const isSwiping = useSharedValue(false);
 
-  // 滑轨初始偏移到中心
   useEffect(() => {
     if (width > 0) {
       translateX.value = -width;
     }
   }, [width, translateX]);
 
-  // 预计算目标月份数据（手势滑动或按钮点击时调用）
+  const onDayPressStable = useCallback(
+    (dateKey: string, year: number, month: number, day: number) => {
+      onDayPress(dateKey, year, month, day);
+    },
+    [onDayPress]
+  );
+
   const precomputeTransition = useCallback(
     (dir: number) => {
       const d = gridData;
@@ -316,7 +373,6 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
     [today, gridData]
   );
 
-  // 动画完成时原子更新 state，消除 ref + state 不一致导致的闪烁
   const applyTransition = useCallback(() => {
     const pending = pendingRef.current;
     if (!pending) return;
@@ -327,12 +383,10 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
     });
   }, [isSwiping]);
 
-  // —— 月份切换按钮 ——
   const navigateMonth = useCallback(
     (dir: number) => {
       if (isSwiping.value || width === 0) return;
       isSwiping.value = true;
-      // 动画前同步计算目标数据
       precomputeTransition(dir);
       const targetX = dir < 0 ? -2 * width : 0;
       translateX.value = withTiming(targetX, { duration: ANIM_DURATION }, (finished) => {
@@ -345,15 +399,12 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
     [width, precomputeTransition, applyTransition, isSwiping, translateX]
   );
 
-  // —— 布局测量 ——
   const onLayout = useCallback((e: LayoutChangeEvent) => {
     setWidth(e.nativeEvent.layout.width);
   }, []);
 
-  // 记录上一次预计算方向，避免重复触发
   const precomputedDir = useRef(0);
 
-  // —— 手势 ——
   const panGesture = Gesture.Pan()
     .onStart(() => {
       if (isSwiping.value) return;
@@ -363,7 +414,6 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
       if (isSwiping.value) return;
       translateX.value = -width + e.translationX;
 
-      // 超过阈值时预计算目标数据（纯计算，不触发 React 渲染）
       const w = width;
       if (w > 0) {
         if (e.translationX < -w * 0.3 && precomputedDir.current !== -1) {
@@ -380,9 +430,7 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
       const w = width;
 
       if (e.translationX < -SWIPE_THRESHOLD && w > 0) {
-        // 左滑 → 下月
         isSwiping.value = true;
-        // 动画前同步计算（若还未预计算则补算）
         if (precomputedDir.current !== -1) runOnJS(precomputeTransition)(-1);
         translateX.value = withTiming(-2 * w, { duration: ANIM_DURATION }, (finished) => {
           if (finished) {
@@ -391,7 +439,6 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
           }
         });
       } else if (e.translationX > SWIPE_THRESHOLD && w > 0) {
-        // 右滑 → 上月
         isSwiping.value = true;
         if (precomputedDir.current !== 1) runOnJS(precomputeTransition)(1);
         translateX.value = withTiming(0, { duration: ANIM_DURATION }, (finished) => {
@@ -401,7 +448,6 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
           }
         });
       } else {
-        // 回弹（标签不变，无需更新）
         translateX.value = withTiming(-w, { duration: ANIM_DURATION });
       }
     });
@@ -412,98 +458,17 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
 
   const d = gridData;
 
-  if (width === 0) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerSpacer} />
-          <ThemedText type="title" style={styles.monthLabelText}>{gridData.label}</ThemedText>
-          <View style={styles.headerRightGroup}>
-            <View style={styles.headerSpacer} />
-            {onSearchPress && (
-              <TouchableOpacity
-                onPress={onSearchPress}
-                hitSlop={12}
-                style={styles.headerArrow}>
-                <ThemedText style={[styles.arrowText, { color: mutedColor }]}>🔍</ThemedText>
-              </TouchableOpacity>
-            )}
-            {onBackupPress && (
-              <TouchableOpacity
-                onPress={onBackupPress}
-                hitSlop={12}
-                style={styles.headerArrow}>
-                <ThemedText style={[styles.arrowText, { color: mutedColor }]}>↑↓</ThemedText>
-              </TouchableOpacity>
-            )}
-            {onSettingsPress && (
-              <TouchableOpacity
-                onPress={onSettingsPress}
-                hitSlop={12}
-                style={styles.headerArrow}>
-                <ThemedText style={[styles.arrowText, { color: mutedColor }]}>⚙</ThemedText>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-        <View style={styles.weekRow}>
-          {WEEKDAYS.map((wd, i) => (
-            <View key={wd} style={styles.weekCell}>
-              <ThemedText style={[styles.weekdayText, { color: i >= 5 ? weekendColor : mutedColor }]}>
-                {wd}
-              </ThemedText>
-            </View>
-          ))}
-        </View>
-        <View style={styles.gestureArea} onLayout={onLayout} />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigateMonth(1)}
-          hitSlop={12}
-          style={styles.headerArrow}>
-          <ThemedText style={[styles.arrowText, { color: mutedColor }]}>‹</ThemedText>
-        </TouchableOpacity>
-        <ThemedText type="title" style={styles.monthLabelText}>{gridData.label}</ThemedText>
-        <View style={styles.headerRightGroup}>
-          <TouchableOpacity
-            onPress={() => navigateMonth(-1)}
-            hitSlop={12}
-            style={styles.headerArrow}>
-            <ThemedText style={[styles.arrowText, { color: mutedColor }]}>›</ThemedText>
-          </TouchableOpacity>
-          {onSearchPress && (
-            <TouchableOpacity
-              onPress={onSearchPress}
-              hitSlop={12}
-              style={styles.headerArrow}>
-              <ThemedText style={[styles.arrowText, { color: mutedColor }]}>🔍</ThemedText>
-            </TouchableOpacity>
-          )}
-          {onBackupPress && (
-            <TouchableOpacity
-              onPress={onBackupPress}
-              hitSlop={12}
-              style={styles.headerArrow}>
-              <ThemedText style={[styles.arrowText, { color: mutedColor }]}>↑↓</ThemedText>
-            </TouchableOpacity>
-          )}
-          {onSettingsPress && (
-            <TouchableOpacity
-              onPress={onSettingsPress}
-              hitSlop={12}
-              style={styles.headerArrow}>
-              <ThemedText style={[styles.arrowText, { color: mutedColor }]}>⚙</ThemedText>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
+      <CalendarHeader
+        label={d.label}
+        mutedColor={mutedColor}
+        onPrev={width > 0 ? () => navigateMonth(1) : undefined}
+        onNext={width > 0 ? () => navigateMonth(-1) : undefined}
+        onSearchPress={onSearchPress}
+        onBackupPress={onBackupPress}
+        onSettingsPress={onSettingsPress}
+      />
       <View style={styles.weekRow}>
         {WEEKDAYS.map((wd, i) => (
           <View key={wd} style={styles.weekCell}>
@@ -513,22 +478,25 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
           </View>
         ))}
       </View>
-
-      <GestureDetector gesture={panGesture}>
-        <View style={styles.gestureArea}>
-          <Animated.View style={[styles.track, { width: width * 3 }, trackStyle]}>
-            <View style={{ width }}>
-              <MonthGrid grid={d.prevGrid} onDayPress={onDayPress} getDailyTotal={getDailyTotal} getDayBudget={getDayBudget} colors={colors} />
-            </View>
-            <View style={{ width }}>
-              <MonthGrid grid={d.currGrid} onDayPress={onDayPress} getDailyTotal={getDailyTotal} getDayBudget={getDayBudget} colors={colors} />
-            </View>
-            <View style={{ width }}>
-              <MonthGrid grid={d.nextGrid} onDayPress={onDayPress} getDailyTotal={getDailyTotal} getDayBudget={getDayBudget} colors={colors} />
-            </View>
-          </Animated.View>
-        </View>
-      </GestureDetector>
+      {width === 0 ? (
+        <View style={styles.gestureArea} onLayout={onLayout} />
+      ) : (
+        <GestureDetector gesture={panGesture}>
+          <View style={styles.gestureArea}>
+            <Animated.View style={[styles.track, { width: width * 3 }, trackStyle]}>
+              <View style={{ width }}>
+                <MonthGrid grid={d.prevGrid} onDayPress={onDayPressStable} getDailyTotal={getDailyTotal} getDayBudget={getDayBudget} colors={colors} />
+              </View>
+              <View style={{ width }}>
+                <MonthGrid grid={d.currGrid} onDayPress={onDayPressStable} getDailyTotal={getDailyTotal} getDayBudget={getDayBudget} colors={colors} />
+              </View>
+              <View style={{ width }}>
+                <MonthGrid grid={d.nextGrid} onDayPress={onDayPressStable} getDailyTotal={getDailyTotal} getDayBudget={getDayBudget} colors={colors} />
+              </View>
+            </Animated.View>
+          </View>
+        </GestureDetector>
+      )}
     </View>
   );
 }
