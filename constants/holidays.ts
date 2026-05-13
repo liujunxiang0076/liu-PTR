@@ -84,8 +84,9 @@ export function getDayInfo(year: number, month: number, day: number): DayDetail 
   // 解析节假日名称
   const rawHolidayName = parseHolidayName(detail.name);
 
-  // 只在假期第一天显示节日名，其余假日天返回 null（让农历信息显示）
-  const holidayName = isFirstDayOfHoliday(dateStr, rawHolidayName) ? rawHolidayName : null;
+  // 非节假日的工作日（如调休补班、库数据异常）不显示节日名
+  const holidayName = detail.work ? null
+    : isFirstDayOfHoliday(dateStr, rawHolidayName) ? rawHolidayName : null;
 
   // 获取农历信息
   let lunarDate = '';
