@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -50,6 +50,14 @@ type DayCell = {
   lunarText: string;
   restDayBadge: RestDayBadge;
   dateKey: string;
+};
+
+type GridState = {
+  year: number;
+  month: number;
+  prevGrid: DayCell[][];
+  currGrid: DayCell[][];
+  nextGrid: DayCell[][];
 };
 
 type Props = {
@@ -120,11 +128,6 @@ function buildGrid(year: number, month: number, today: Date): DayCell[][] {
 
 function computeLabel(y: number, m: number): string {
   return `${y}年${m + 1}月`;
-}
-
-function computeAdjacent(y: number, m: number, dir: number) {
-  if (dir < 0) return m === 11 ? { y: y + 1, m: 0 } : { y, m: m + 1 };
-  return m === 0 ? { y: y - 1, m: 11 } : { y, m: m - 1 };
 }
 
 // ─── header ────────────────────────────────────────────────────
@@ -316,20 +319,23 @@ const MonthGrid = React.memo(function MonthGrid({
 export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPress, onBackupPress, onSearchPress }: Props) {
   const today = useMemo(() => new Date(), []);
 
-  const [gridData, setGridData] = useState(() => {
+  // grid 数据存 ref，切换月份时只改 ref 引用，不触发 React 渲染管线
+  // 未变化的 MonthGrid 因 grid prop 引用不变，React.memo 直接跳过
+  const initGrid = (() => {
     const y = today.getFullYear();
     const m = today.getMonth();
-    const prev = computeAdjacent(y, m, 1);
-    const next = computeAdjacent(y, m, -1);
     return {
-      year: y,
-      month: m,
-      label: computeLabel(y, m),
+      year: y, month: m,
+      prevGrid: buildGrid(m === 0 ? y - 1 : y, m === 0 ? 11 : m - 1, today),
       currGrid: buildGrid(y, m, today),
-      prevGrid: buildGrid(prev.y, prev.m, today),
-      nextGrid: buildGrid(next.y, next.m, today),
+      nextGrid: buildGrid(m === 11 ? y + 1 : y, m === 11 ? 0 : m + 1, today),
     };
-  });
+  })();
+  const gridRef = useRef<GridState>(initGrid);
+  const pendingGridRef = useRef<DayCell[][] | null>(null);
+
+  // 仅 header 文本用 state 驱动（最轻量的重渲染）
+  const [gridLabel, setGridLabel] = useState(() => computeLabel(today.getFullYear(), today.getMonth()));
 
   const [width, setWidth] = useState(0);
 
@@ -354,41 +360,36 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
     [onDayPress]
   );
 
-  // 月份切换完毕：复用已有 grid 对象，只补充计算缺失的那个
-  // prev 和 curr 复用旧引用 → React.memo 生效 → 对应 MonthGrid 不重新挂载 cell
-  const applyTransition = useCallback(
+  // 月份切换完毕：交换 ref 引用，只触发最小重渲染（header 文本）
+  const commitAndReset = useCallback(
     (dir: number) => {
-      setGridData((prev) => {
-        if (dir < 0) {
-          // 前进：旧 curr → prev，旧 next → curr，补算 next
-          const ny = prev.month === 11 ? prev.year + 1 : prev.year;
-          const nm = prev.month === 11 ? 0 : prev.month + 1;
-          return {
-            year: ny, month: nm,
-            label: computeLabel(ny, nm),
-            prevGrid: prev.currGrid,
-            currGrid: prev.nextGrid,
-            nextGrid: buildGrid(
-              nm === 11 ? ny + 1 : ny, nm === 11 ? 0 : nm + 1, today,
-            ),
-          };
-        }
-        // 后退：补算 prev，旧 prev → curr，旧 curr → next
+      const prev = gridRef.current;
+      if (dir < 0) {
+        const ny = prev.month === 11 ? prev.year + 1 : prev.year;
+        const nm = prev.month === 11 ? 0 : prev.month + 1;
+        gridRef.current = {
+          year: ny, month: nm,
+          prevGrid: prev.currGrid,
+          currGrid: prev.nextGrid,
+          nextGrid: pendingGridRef.current ?? buildGrid(
+            nm === 11 ? ny + 1 : ny, nm === 11 ? 0 : nm + 1, today,
+          ),
+        };
+      } else {
         const py = prev.month === 0 ? prev.year - 1 : prev.year;
         const pm = prev.month === 0 ? 11 : prev.month - 1;
-        return {
+        gridRef.current = {
           year: py, month: pm,
-          label: computeLabel(py, pm),
-          prevGrid: buildGrid(
+          prevGrid: pendingGridRef.current ?? buildGrid(
             pm === 0 ? py - 1 : py, pm === 0 ? 11 : pm - 1, today,
           ),
           currGrid: prev.prevGrid,
           nextGrid: prev.currGrid,
         };
-      });
-      requestAnimationFrame(() => {
-        isSwiping.value = false;
-      });
+      }
+      pendingGridRef.current = null;
+      setGridLabel(computeLabel(gridRef.current.year, gridRef.current.month));
+      isSwiping.value = false;
     },
     [today, isSwiping],
   );
@@ -401,11 +402,11 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
       translateX.value = withTiming(targetX, { duration: ANIM_DURATION }, (finished) => {
         if (finished) {
           translateX.value = -width;
-          runOnJS(applyTransition)(dir);
+          runOnJS(commitAndReset)(dir);
         }
       });
     },
-    [width, applyTransition, isSwiping, translateX],
+    [width, commitAndReset, isSwiping, translateX],
   );
 
   const onLayout = useCallback((e: LayoutChangeEvent) => {
@@ -426,18 +427,31 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
 
       if (e.translationX < -SWIPE_THRESHOLD && w > 0) {
         isSwiping.value = true;
+        // 动画期间在 UI 线程预计算目标月份 grid
+        const d = gridRef.current;
+        const nm = d.month === 11 ? 0 : d.month + 1;
+        const ny = d.month === 11 ? d.year + 1 : d.year;
+        pendingGridRef.current = buildGrid(
+          nm === 11 ? ny + 1 : ny, nm === 11 ? 0 : nm + 1, today,
+        );
         translateX.value = withTiming(-2 * w, { duration: ANIM_DURATION }, (finished) => {
           if (finished) {
             translateX.value = -w;
-            runOnJS(applyTransition)(-1);
+            runOnJS(commitAndReset)(-1);
           }
         });
       } else if (e.translationX > SWIPE_THRESHOLD && w > 0) {
         isSwiping.value = true;
+        const d = gridRef.current;
+        const pm = d.month === 0 ? 11 : d.month - 1;
+        const py = d.month === 0 ? d.year - 1 : d.year;
+        pendingGridRef.current = buildGrid(
+          pm === 0 ? py - 1 : py, pm === 0 ? 11 : pm - 1, today,
+        );
         translateX.value = withTiming(0, { duration: ANIM_DURATION }, (finished) => {
           if (finished) {
             translateX.value = -w;
-            runOnJS(applyTransition)(1);
+            runOnJS(commitAndReset)(1);
           }
         });
       } else {
@@ -449,12 +463,12 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
     transform: [{ translateX: translateX.value }],
   }));
 
-  const d = gridData;
+  const g = gridRef.current;
 
   return (
     <View style={styles.container}>
       <CalendarHeader
-        label={d.label}
+        label={gridLabel}
         mutedColor={mutedColor}
         onPrev={width > 0 ? () => navigateMonth(1) : undefined}
         onNext={width > 0 ? () => navigateMonth(-1) : undefined}
@@ -478,13 +492,13 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
           <View style={styles.gestureArea}>
             <Animated.View style={[styles.track, { width: width * 3 }, trackStyle]}>
               <View style={{ width }}>
-                <MonthGrid grid={d.prevGrid} onDayPress={onDayPressStable} getDailyTotal={getDailyTotal} getDayBudget={getDayBudget} colors={colors} />
+                <MonthGrid grid={g.prevGrid} onDayPress={onDayPressStable} getDailyTotal={getDailyTotal} getDayBudget={getDayBudget} colors={colors} />
               </View>
               <View style={{ width }}>
-                <MonthGrid grid={d.currGrid} onDayPress={onDayPressStable} getDailyTotal={getDailyTotal} getDayBudget={getDayBudget} colors={colors} />
+                <MonthGrid grid={g.currGrid} onDayPress={onDayPressStable} getDailyTotal={getDailyTotal} getDayBudget={getDayBudget} colors={colors} />
               </View>
               <View style={{ width }}>
-                <MonthGrid grid={d.nextGrid} onDayPress={onDayPressStable} getDailyTotal={getDailyTotal} getDayBudget={getDayBudget} colors={colors} />
+                <MonthGrid grid={g.nextGrid} onDayPress={onDayPressStable} getDailyTotal={getDailyTotal} getDayBudget={getDayBudget} colors={colors} />
               </View>
             </Animated.View>
           </View>
