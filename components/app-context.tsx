@@ -4,6 +4,7 @@ import { type DailyBudget, type ExpenseCategory, type ExpenseItem, type Expenses
 import { useExpenses } from '@/hooks/use-expenses';
 import { useTrips } from '@/hooks/use-trips';
 import { useBudget } from '@/hooks/use-budget';
+import { useAuth } from '@/context/auth-context';
 
 // ── 费用 Context ──────────────────────────────────────────────
 type ExpensesContextType = {
@@ -103,7 +104,8 @@ type BudgetContextType = {
 const BudgetContext = createContext<BudgetContextType | null>(null);
 
 function BudgetProvider({ children }: { children: React.ReactNode }) {
-  const hook = useBudget();
+  const { user } = useAuth();
+  const hook = useBudget(user?.id);
   const value: BudgetContextType = useMemo(() => ({
     budget: hook.budget,
     updateBudget: hook.update,

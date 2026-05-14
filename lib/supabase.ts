@@ -10,4 +10,5 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export const TABLES = {
   TRIPS: 'trips',
   EXPENSES: 'expenses',
+  BUDGETS: 'budgets',
 };

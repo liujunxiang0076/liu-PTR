@@ -63,3 +63,12 @@ CREATE POLICY "Users can delete own expenses" ON expenses
 CREATE INDEX idx_trips_user_id ON trips(user_id);
 CREATE INDEX idx_expenses_trip_id ON expenses(trip_id);
 CREATE INDEX idx_expenses_user_id ON expenses(user_id);
+
+-- 6. 预算表（每用户一条，实时同步）
+CREATE TABLE budgets (
+  user_id UUID PRIMARY KEY,
+  workday DECIMAL(10,2) NOT NULL DEFAULT 200,
+  weekend DECIMAL(10,2) NOT NULL DEFAULT 300,
+  holiday DECIMAL(10,2) NOT NULL DEFAULT 500,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);

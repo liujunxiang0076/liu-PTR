@@ -3,9 +3,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { type DailyBudget } from '@/types/expense';
 import { isWeekend, getRestDayBadge } from '@/constants/holidays';
+import { supabase, TABLES } from '@/lib/supabase';
 
 const STORAGE_KEY = '@budget:v1';
-const SAVE_DELAY = 300;
 
 const DEFAULT_BUDGET: DailyBudget = {
   workday: 200,
@@ -13,44 +13,63 @@ const DEFAULT_BUDGET: DailyBudget = {
   holiday: 500,
 };
 
-export function useBudget() {
+export function useBudget(userId?: string) {
   const [budget, setBudget] = useState<DailyBudget>(DEFAULT_BUDGET);
   const [loaded, setLoaded] = useState(false);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestBudget = useRef(budget);
   latestBudget.current = budget;
 
+  // 启动：AsyncStorage 秒开 → Supabase 拉取覆盖
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
-      if (raw) {
-        try {
-          setBudget(JSON.parse(raw));
-        } catch (e) {
-          console.warn('[useBudget] JSON 解析失败:', e);
-        }
-      }
-      setLoaded(true);
-    });
-  }, []);
+    let cancelled = false;
 
-  useEffect(() => {
-    if (loaded) {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => {
-        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(budget));
-      }, SAVE_DELAY);
-    }
-    return () => {
-      if (saveTimer.current) {
-        clearTimeout(saveTimer.current);
-        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(latestBudget.current));
+    AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
+      if (cancelled) return;
+      if (raw) {
+        try { setBudget(JSON.parse(raw)); } catch {}
       }
-    };
-  }, [budget, loaded]);
+    });
+
+    if (userId) {
+      supabase.from(TABLES.BUDGETS)
+        .select('workday, weekend, holiday')
+        .eq('user_id', userId)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (cancelled || !data) return;
+          const remote: DailyBudget = {
+            workday: data.workday,
+            weekend: data.weekend,
+            holiday: data.holiday,
+          };
+          setBudget(remote);
+          AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(remote));
+        });
+    }
+
+    setLoaded(true);
+    return () => { cancelled = true; };
+  }, [userId]);
 
   const update = useCallback((updates: Partial<DailyBudget>) => {
-    setBudget((prev) => ({ ...prev, ...updates }));
-  }, []);
+    setBudget((prev) => {
+      const next = { ...prev, ...updates };
+      // 本地持久化
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      // 云端同步
+      if (userId) {
+        supabase.from(TABLES.BUDGETS).upsert({
+          user_id: userId,
+          workday: next.workday,
+          weekend: next.weekend,
+          holiday: next.holiday,
+        }).then(({ error }) => {
+          if (error) console.warn('[useBudget] 云端同步失败:', error.message);
+        });
+      }
+      return next;
+    });
+  }, [userId]);
 
   /** 根据日期返回当天的预算类型和金额 */
   const getDayBudget = useCallback(
@@ -70,7 +89,16 @@ export function useBudget() {
 
   const importAll = useCallback((data: DailyBudget) => {
     setBudget(data);
-  }, []);
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    if (userId) {
+      supabase.from(TABLES.BUDGETS).upsert({
+        user_id: userId,
+        workday: data.workday,
+        weekend: data.weekend,
+        holiday: data.holiday,
+      });
+    }
+  }, [userId]);
 
   return { budget, update, getDayBudget, importAll, loaded };
 }
