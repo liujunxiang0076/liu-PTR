@@ -6,6 +6,22 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   setItem: jest.fn(() => Promise.resolve()),
 }));
 
+jest.mock('@/lib/supabase', () => ({
+  supabase: {
+    from: jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnValue({
+          maybeSingle: jest.fn().mockReturnValue(
+            Promise.resolve({ data: null })
+          ),
+        }),
+      }),
+      upsert: jest.fn().mockReturnValue(Promise.resolve({ error: null })),
+    }),
+  },
+  TABLES: { TRIPS: 'trips', EXPENSES: 'expenses', BUDGETS: 'budgets' },
+}));
+
 describe('useBudget', () => {
   it('返回默认预算配置', async () => {
     const { result } = renderHook(() => useBudget());
