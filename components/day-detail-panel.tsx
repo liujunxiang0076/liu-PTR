@@ -124,6 +124,13 @@ export function DayDetailPanel({ visible, dateKey, year, month, day, onClose }: 
     }
   }, [requestLocation]);
 
+  // 定位错误时展示提示
+  useEffect(() => {
+    if (locationError) {
+      Alert.alert('定位失败', locationError);
+    }
+  }, [locationError]);
+
   const handleSave = useCallback(() => {
     const num = parseFloat(amount);
     if (isNaN(num) || num <= 0) return;

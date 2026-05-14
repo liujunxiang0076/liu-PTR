@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { Platform } from 'react-native';
 import * as Location from 'expo-location';
 import { type LocationInfo } from '@/types/expense';
 
@@ -20,17 +21,25 @@ export function useLocation(): UseLocationReturn {
     setError(null);
 
     try {
+      // 检查定位服务是否开启
+      const enabled = await Location.hasServicesEnabledAsync();
+      if (!enabled) {
+        setError('定位服务未开启，请在系统设置中开启');
+        return null;
+      }
+
       // 请求权限
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         setError('需要定位权限才能获取位置信息');
-        setLoading(false);
         return null;
       }
 
-      // 获取当前位置
+      // 获取当前位置（带超时）
       const currentLocation = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
+        timeInterval: 1000,
+        mayShowUserSettingsDialog: true,
       });
 
       // 尝试获取地址
@@ -62,12 +71,12 @@ export function useLocation(): UseLocationReturn {
       };
 
       setLocation(locationInfo);
-      setLoading(false);
       return locationInfo;
     } catch (err) {
-      setError('获取位置失败，请重试');
-      setLoading(false);
+      setError('获取位置失败，请确认GPS已开启后重试');
       return null;
+    } finally {
+      setLoading(false);
     }
   }, []);
 
