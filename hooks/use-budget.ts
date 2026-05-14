@@ -17,6 +17,8 @@ export function useBudget() {
   const [budget, setBudget] = useState<DailyBudget>(DEFAULT_BUDGET);
   const [loaded, setLoaded] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestBudget = useRef(budget);
+  latestBudget.current = budget;
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
@@ -41,7 +43,7 @@ export function useBudget() {
     return () => {
       if (saveTimer.current) {
         clearTimeout(saveTimer.current);
-        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(budget));
+        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(latestBudget.current));
       }
     };
   }, [budget, loaded]);
