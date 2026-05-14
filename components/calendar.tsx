@@ -347,6 +347,8 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
   const translateX = useSharedValue(0);
   const isSwiping = useSharedValue(false);
 
+  const resetSwiping = useCallback(() => { isSwiping.value = false; }, [isSwiping]);
+
   useEffect(() => {
     if (width > 0) {
       translateX.value = -width;
@@ -427,11 +429,11 @@ export function Calendar({ onDayPress, getDailyTotal, getDayBudget, onSettingsPr
       translateX.value = withTiming(targetX, { duration: ANIM_DURATION }, (finished) => {
         if (finished) {
           translateX.value = -width;
-          runOnJS(() => { isSwiping.value = false; })();
+          runOnJS(resetSwiping)();
         }
       });
     },
-    [width, today, isSwiping, translateX],
+    [width, today, isSwiping, translateX, resetSwiping],
   );
 
   const onLayout = useCallback((e: LayoutChangeEvent) => {
