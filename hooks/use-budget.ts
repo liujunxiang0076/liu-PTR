@@ -35,8 +35,16 @@ export function useBudget(userId?: string) {
         .select('workday, weekend, holiday')
         .eq('user_id', userId)
         .maybeSingle()
-        .then(({ data }) => {
-          if (cancelled || !data) return;
+        .then(({ data, error }) => {
+          if (cancelled) return;
+          if (error) {
+            console.warn('[useBudget] Supabase 预算拉取失败:', error.message);
+            return;
+          }
+          if (!data) {
+            console.log('[useBudget] Supabase 无预算数据，userId:', userId);
+            return;
+          }
           const remote: DailyBudget = {
             workday: data.workday,
             weekend: data.weekend,

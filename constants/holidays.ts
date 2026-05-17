@@ -4,7 +4,6 @@
  */
 import {
   isHoliday,
-  isInLieu,
   isWorkday,
   getDayDetail,
   getSolarTerms,
@@ -56,44 +55,21 @@ function parseHolidayName(name: string): string | null {
  * @param month 月（0-based）
  * @param day 日
  */
-/**
- * 判断是否是该假期的第一天（只有第一天显示节日名，其余假日天显示农历）
- * 跳过调休工作日往前查找：如2/15是春节第一天，2/14是调休补班日标了"春节"但应忽略
- */
-function isFirstDayOfHoliday(dateStr: string, holidayName: string | null): boolean {
-  if (!holidayName) return false;
-  try {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    let prevDate = new Date(y, m - 1, d - 1);
-    for (let i = 0; i < 7; i++) {
-      const prevStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}-${String(prevDate.getDate()).padStart(2, '0')}`;
-      const prevDetail = getDayDetail(prevStr);
-      // 跳过调休工作日（库有时将补班日也标为节假日范围）
-      if (prevDetail.work) {
-        prevDate = new Date(prevDate.getFullYear(), prevDate.getMonth(), prevDate.getDate() - 1);
-        continue;
-      }
-      const prevName = parseHolidayName(prevDetail.name);
-      return prevName !== holidayName;
-    }
-    return true;
-  } catch {
-    return true;
-  }
-}
-
 export function getDayInfo(year: number, month: number, day: number): DayDetail {
   const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-  // 获取日期详情
+  // 获取日期详情（数据来自 chinese-days 内嵌的 holidays/workdays/inLieuDays）
   const detail = getDayDetail(dateStr);
 
   // 解析节假日名称
   const rawHolidayName = parseHolidayName(detail.name);
 
-  // 非节假日的工作日（如调休补班、库数据异常）不显示节日名
-  const holidayName = detail.work ? null
-    : isFirstDayOfHoliday(dateStr, rawHolidayName) ? rawHolidayName : null;
+  // 所有假期天都显示节日名（不只是第一天），调休工作日除外
+  const holidayName = detail.work ? null : rawHolidayName;
+
+  // 判断是否是调休补班日：周末但被标记为工作日
+  // chinese-days 的 inLieuDays 含义是"有补班的假期天"，不是"补班日本身"
+  const isMakeupWorkday = detail.work && isWeekend(year, month, day);
 
   // 获取农历信息
   let lunarDate = '';
@@ -122,7 +98,7 @@ export function getDayInfo(year: number, month: number, day: number): DayDetail 
 
   return {
     isHoliday: !detail.work && holidayName !== null,
-    isInLieu: isInLieu(dateStr),
+    isInLieu: isMakeupWorkday,
     isWorkday: detail.work,
     holidayName,
     lunarDate,
@@ -184,11 +160,12 @@ export function isDayHoliday(year: number, month: number, day: number): boolean 
 }
 
 /**
- * 判断是否是调休日
+ * 判断是否是调休补班日（周末但被标记为工作日）
  */
 export function isDayInLieu(year: number, month: number, day: number): boolean {
   const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  return isInLieu(dateStr);
+  const detail = getDayDetail(dateStr);
+  return detail.work && isWeekend(year, month, day);
 }
 
 /**
